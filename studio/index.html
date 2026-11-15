@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="A local painting instrument. Continuous marks, explicit materials, editable JSON scores.">
+  <title>Poiesis — Painting instrument</title>
+  <link rel="stylesheet" href="./style.css">
+</head>
+<body>
+  <header class="topbar">
+    <a class="wordmark" href="./" aria-label="Poiesis Painter home">POIESIS<span>PAINTER</span></a>
+    <span class="top-note">A score becomes a surface.</span>
+    <span class="version">LOCAL · 0.1</span>
+  </header>
+  <main class="workspace">
+    <section class="workbench" aria-label="Painting preview">
+      <div class="work-heading">
+        <div><p id="medium" class="eyebrow">Shared landscape</p><h1 id="scene-title">A small warmth, far away</h1></div>
+        <button id="crop-toggle" class="quiet" aria-pressed="false">Inspect a crop</button>
+      </div>
+      <p id="scene-description" class="scene-description">Pale overcast sky, distant ridges and one warm interruption.</p>
+      <div class="canvas-stage">
+        <div class="canvas-wrap"><canvas id="painting" width="1152" height="768" aria-label="Rendered painting"></canvas></div>
+        <div id="render-overlay" class="render-overlay"><span class="spinner"></span><span id="render-label">Preparing the surface</span></div>
+      </div>
+      <div class="canvas-caption"><span id="surface-info">1152 × 768 · native render</span><span id="render-info">Canvas 2D / local CPU material fields</span></div>
+      <div id="crop-panel" class="crop-panel" hidden>
+        <div class="crop-image"><canvas id="crop-canvas" width="320" height="320" aria-label="Unprocessed enlarged crop"></canvas></div>
+        <div class="crop-copy"><p class="eyebrow">Close inspection</p><h2>Look at the mark.</h2><p>Click the painting to move this crop. This is a 160 × 160 pixel region of the current render, enlarged 2× with nearest-neighbor sampling.</p><p id="crop-position" class="mono"></p><button id="export-crop" class="quiet">Download crop PNG</button></div>
+      </div>
+      <details class="state-details"><summary>Inspect document & renderer state</summary><pre id="state"></pre></details>
+      <p class="material-note">Ink, watercolor, oil, graphite, marker and knife use distinct deposition rules. Wet transport and impasto are bounded approximations; this studio reports the backend actually running.</p>
+    </section>
+    <aside class="controls" aria-label="Painting controls">
+      <section class="control-section">
+        <div class="section-heading"><h2>01 / Composition</h2><span class="pill">5 studies</span></div>
+        <label for="scene-select">Start with a score</label>
+        <select id="scene-select"><option value="landscape">Shared landscape</option><option value="ink">Restrained ink</option><option value="watercolor">Transparent watercolor</option><option value="oil">Oil & palette knife</option><option value="studies">Material studies</option></select>
+        <label for="resolution">Render dimensions</label>
+        <select id="resolution"><option value="1152,768">1152 × 768 · native</option><option value="2304,1536">2304 × 1536 · 2× dimensions</option><option value="3072,2048">3072 × 2048 · print study</option></select>
+        <p class="hint">Changing dimensions re-renders the score. It does not enlarge a preview.</p>
+      </section>
+      <section class="control-section score-section">
+        <div class="section-heading"><h2>02 / The score</h2><button id="reset" class="text-button">Reset example</button></div>
+        <label class="sr-only" for="score">Versioned JSON painting score</label>
+        <textarea id="score" spellcheck="false" aria-describedby="score-hint"></textarea>
+        <p id="score-hint" class="hint">Data only. Edit a material, a path or a family of marks. <kbd>Ctrl</kbd> + <kbd>Enter</kbd> applies the score.</p>
+        <div class="button-row"><button id="apply" class="primary">Apply score <span>↗</span></button><button id="cancel" class="quiet" hidden>Cancel</button><button id="undo" class="quiet" aria-label="Undo">Undo</button><button id="redo" class="quiet" aria-label="Redo">Redo</button></div>
+        <progress id="progress" max="1" value="0" hidden></progress>
+        <p id="status" class="status" role="status" aria-live="polite">Preparing the first painting…</p>
+      </section>
+      <details class="revision-section control-section">
+        <summary>Revise one passage by ID</summary>
+        <label for="command-id">Command</label><select id="command-id"></select>
+        <label for="patch">JSON patch</label><textarea id="patch" spellcheck="false">{"intent":{"restraint":0.65}}</textarea>
+        <p class="hint">A revision keeps the command in sequence. Stateful material is replayed; unaffected layers may be reused.</p>
+        <button id="revise" class="quiet">Apply revision</button>
+      </details>
+      <section class="control-section export-section"><h2>03 / Take it with you</h2><div class="button-row"><button id="export-png" class="quiet">Download PNG</button><button id="export-json" class="quiet">Download JSON</button></div><p class="hint">Raw output and the complete reproducible score. No account, model or network service required.</p></section>
+    </aside>
+  </main>
+  <footer><span>POIESIS / An instrument for individual decisions.</span><span id="backend-label">Canvas 2D · CPU material fields</span></footer>
+  <script type="module" src="./studio.js"></script>
+</body>
+</html>

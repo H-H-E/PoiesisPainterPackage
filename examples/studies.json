@@ -1,0 +1,344 @@
+{
+  "version": "1.0",
+  "width": 1152,
+  "height": 768,
+  "seed": 981,
+  "background": "#e9e6dc",
+  "paper": {
+    "texture": 0.36,
+    "absorbency": 0.6
+  },
+  "materials": {
+    "ink": {
+      "medium": "ink",
+      "color": "#203548",
+      "size": 0.027,
+      "load": 0.86,
+      "roughness": 0.3,
+      "bristles": 36
+    },
+    "dry": {
+      "medium": "ink",
+      "color": "#203548",
+      "size": 0.031,
+      "load": 0.4,
+      "roughness": 0.8,
+      "bristles": 48
+    },
+    "waterBlue": {
+      "medium": "watercolor",
+      "color": "#315c93",
+      "size": 0.045,
+      "opacity": 0.72,
+      "wetness": 0.9,
+      "granulation": 0.7
+    },
+    "waterOchre": {
+      "medium": "watercolor",
+      "color": "#b98e43",
+      "size": 0.045,
+      "opacity": 0.75,
+      "wetness": 0.9,
+      "granulation": 0.6
+    },
+    "oilBlue": {
+      "medium": "oil",
+      "color": "#315683",
+      "size": 0.045,
+      "load": 0.94,
+      "bristles": 32,
+      "viscosity": 0.7
+    },
+    "oilOchre": {
+      "medium": "oil",
+      "color": "#c69951",
+      "size": 0.045,
+      "load": 0.94,
+      "bristles": 32,
+      "viscosity": 0.7
+    },
+    "wash": {
+      "medium": "watercolor",
+      "color": "#607f96",
+      "size": 0.06,
+      "opacity": 0.7,
+      "wetness": 0.92,
+      "granulation": 0.9
+    },
+    "graphite": {
+      "medium": "graphite",
+      "color": "#2d3338",
+      "size": 0.012,
+      "load": 0.65,
+      "roughness": 0.9,
+      "bristles": 16
+    }
+  },
+  "layers": [
+    {
+      "id": "pressure-direction",
+      "commands": [
+        {
+          "id": "pressure-ribbon",
+          "op": "stroke",
+          "material": "ink",
+          "path": [
+            [
+              0.06,
+              0.19,
+              0.05
+            ],
+            [
+              0.12,
+              0.11,
+              0.4
+            ],
+            [
+              0.2,
+              0.21,
+              1
+            ],
+            [
+              0.28,
+              0.14,
+              0.05
+            ]
+          ]
+        },
+        {
+          "id": "pressure-return",
+          "op": "stroke",
+          "material": "ink",
+          "path": [
+            [
+              0.06,
+              0.29,
+              0.1
+            ],
+            [
+              0.18,
+              0.26,
+              0.9
+            ],
+            [
+              0.27,
+              0.32,
+              0.05
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "id": "loaded-to-dry",
+      "commands": [
+        {
+          "id": "loaded-drying",
+          "op": "stroke",
+          "material": "dry",
+          "path": [
+            [
+              0.38,
+              0.13,
+              1
+            ],
+            [
+              0.62,
+              0.15,
+              1
+            ],
+            [
+              0.4,
+              0.24,
+              0.8
+            ],
+            [
+              0.61,
+              0.31,
+              0.45
+            ]
+          ],
+          "intent": {
+            "hesitation": 0.1
+          }
+        }
+      ]
+    },
+    {
+      "id": "crossing-wet",
+      "commands": [
+        {
+          "id": "cross-blue",
+          "op": "stroke",
+          "material": "waterBlue",
+          "path": [
+            [
+              0.72,
+              0.12,
+              0.8
+            ],
+            [
+              0.93,
+              0.31,
+              0.8
+            ]
+          ]
+        },
+        {
+          "id": "cross-ochre",
+          "op": "stroke",
+          "material": "waterOchre",
+          "path": [
+            [
+              0.73,
+              0.31,
+              0.8
+            ],
+            [
+              0.92,
+              0.13,
+              0.8
+            ]
+          ]
+        },
+        {
+          "id": "cross-mix",
+          "op": "wait",
+          "steps": 24
+        }
+      ]
+    },
+    {
+      "id": "oil-overlap",
+      "commands": [
+        {
+          "id": "oil-blue",
+          "op": "stroke",
+          "material": "oilBlue",
+          "path": [
+            [
+              0.07,
+              0.58,
+              0.8
+            ],
+            [
+              0.28,
+              0.73,
+              0.8
+            ]
+          ]
+        },
+        {
+          "id": "oil-ochre",
+          "op": "stroke",
+          "material": "oilOchre",
+          "path": [
+            [
+              0.08,
+              0.76,
+              0.8
+            ],
+            [
+              0.26,
+              0.58,
+              0.8
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "id": "watery-edge",
+      "commands": [
+        {
+          "id": "edge-pool",
+          "op": "fill",
+          "material": "wash",
+          "polygon": [
+            [
+              0.39,
+              0.59
+            ],
+            [
+              0.48,
+              0.54
+            ],
+            [
+              0.59,
+              0.59
+            ],
+            [
+              0.61,
+              0.74
+            ],
+            [
+              0.51,
+              0.8
+            ],
+            [
+              0.4,
+              0.74
+            ]
+          ]
+        },
+        {
+          "id": "edge-dry",
+          "op": "wait",
+          "steps": 36
+        }
+      ]
+    },
+    {
+      "id": "dry-surface",
+      "commands": [
+        {
+          "id": "graphite-ribbon",
+          "op": "stroke",
+          "material": "graphite",
+          "path": [
+            [
+              0.71,
+              0.56,
+              0.2
+            ],
+            [
+              0.8,
+              0.59,
+              0.6
+            ],
+            [
+              0.93,
+              0.55,
+              0.9
+            ]
+          ]
+        },
+        {
+          "id": "graphite-hatching",
+          "op": "hatch",
+          "material": "graphite",
+          "polygon": [
+            [
+              0.72,
+              0.64
+            ],
+            [
+              0.93,
+              0.64
+            ],
+            [
+              0.9,
+              0.8
+            ],
+            [
+              0.75,
+              0.78
+            ]
+          ],
+          "spacing": 0.012,
+          "angle": 28
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,12 @@
+{
+  "format": 1,
+  "checkedAt": "2026-11-15",
+  "directory": "../references",
+  "repositories": [
+    {"name":"p5.brush","url":"https://github.com/acamposuribe/p5.brush.git","commit":"054f2feb2ec8f98bd6dbb7d676d0335323180d83","license":"MIT"},
+    {"name":"oil-paint-agents","url":"https://github.com/halfprice06/oil-paint-agents.git","commit":"09a2750b9fe1aa8c31b5741b1139ad1c0d72eef3","license":"MIT"},
+    {"name":"washes-js","url":"https://github.com/castavridis/washes-js.git","commit":"14e485b6e83dba1b5d02c987ae2ddd2222c60063","license":"MIT"},
+    {"name":"sho","url":"https://github.com/enpts/sho.git","commit":"ffcb4cafb28c710a2b32a21fcef8819d57854780","license":"MIT"},
+    {"name":"wet-edge","url":"https://github.com/lambentLogic/wet-edge.git","commit":"e4ce2ec7a37d85c17ad16bb3006959bb88a19a73","license":"MIT"}
+  ]
+}

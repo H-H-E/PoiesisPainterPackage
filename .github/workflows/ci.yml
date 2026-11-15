@@ -1,0 +1,39 @@
+name: Painting engine verification
+
+on:
+  push:
+    branches: [main, 'feat/**']
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run check
+      - name: Install dedicated headless browser
+        run: npx playwright install --with-deps chromium
+      - name: Verify actual browser pixels and studio workflows
+        run: npm run test:browser
+      - name: Render native-resolution evidence
+        run: npm run render
+      - name: Preserve raw verification evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: painting-verification-${{ github.sha }}
+          path: |
+            evidence/browser/
+            evidence/renders/
+            dist/bundle-size.json
+          retention-days: 30

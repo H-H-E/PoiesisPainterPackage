@@ -1,0 +1,522 @@
+{
+  "version": "1.0",
+  "width": 1152,
+  "height": 768,
+  "seed": 97,
+  "background": "#e5e7e0",
+  "paper": {
+    "texture": 0.36,
+    "absorbency": 0.6
+  },
+  "materials": {
+    "sky": {
+      "medium": "watercolor",
+      "color": "#b8c5c7",
+      "size": 0.12,
+      "opacity": 0.25,
+      "wetness": 0.7,
+      "granulation": 0.25
+    },
+    "far": {
+      "medium": "watercolor",
+      "color": "#8e9fa6",
+      "size": 0.05,
+      "opacity": 0.6,
+      "wetness": 0.5
+    },
+    "middle": {
+      "medium": "watercolor",
+      "color": "#546c7a",
+      "size": 0.04,
+      "opacity": 0.72,
+      "wetness": 0.36
+    },
+    "near": {
+      "medium": "ink",
+      "color": "#283e4e",
+      "size": 0.025,
+      "opacity": 0.85,
+      "load": 0.85,
+      "roughness": 0.4
+    },
+    "lake": {
+      "medium": "watercolor",
+      "color": "#233c50",
+      "size": 0.1,
+      "opacity": 0.9,
+      "wetness": 0.4,
+      "granulation": 0.5
+    },
+    "reflection": {
+      "medium": "ink",
+      "color": "#adc0c6",
+      "size": 0.003,
+      "opacity": 0.35,
+      "load": 0.65,
+      "roughness": 0.45
+    },
+    "current": {
+      "medium": "ink",
+      "color": "#0e2435",
+      "size": 0.004,
+      "opacity": 0.52,
+      "load": 0.65
+    },
+    "bank": {
+      "medium": "ink",
+      "color": "#0b1a26",
+      "size": 0.06,
+      "load": 0.9,
+      "roughness": 0.45
+    },
+    "reed": {
+      "medium": "ink",
+      "color": "#102332",
+      "size": 0.0038,
+      "load": 0.75,
+      "roughness": 0.25
+    },
+    "gold": {
+      "medium": "oil",
+      "color": "#b58b54",
+      "size": 0.008,
+      "load": 0.85,
+      "roughness": 0.2,
+      "bristles": 12
+    }
+  },
+  "layers": [
+    {
+      "id": "weather",
+      "commands": [
+        {
+          "id": "sky-wash",
+          "op": "fill",
+          "material": "sky",
+          "polygon": [
+            [
+              0,
+              0
+            ],
+            [
+              1,
+              0
+            ],
+            [
+              1,
+              0.52
+            ],
+            [
+              0,
+              0.48
+            ]
+          ]
+        },
+        {
+          "id": "distant-ridge",
+          "op": "fill",
+          "material": "far",
+          "polygon": [
+            [
+              0,
+              0.42
+            ],
+            [
+              0.13,
+              0.39
+            ],
+            [
+              0.22,
+              0.3
+            ],
+            [
+              0.39,
+              0.43
+            ],
+            [
+              0.57,
+              0.33
+            ],
+            [
+              0.73,
+              0.39
+            ],
+            [
+              0.88,
+              0.34
+            ],
+            [
+              1,
+              0.4
+            ],
+            [
+              1,
+              0.62
+            ],
+            [
+              0,
+              0.62
+            ]
+          ]
+        },
+        {
+          "id": "weather-settle",
+          "op": "wait",
+          "steps": 12
+        }
+      ]
+    },
+    {
+      "id": "ridges",
+      "commands": [
+        {
+          "id": "middle-ridge",
+          "op": "fill",
+          "material": "middle",
+          "polygon": [
+            [
+              0,
+              0.49
+            ],
+            [
+              0.12,
+              0.47
+            ],
+            [
+              0.26,
+              0.4
+            ],
+            [
+              0.39,
+              0.49
+            ],
+            [
+              0.51,
+              0.47
+            ],
+            [
+              0.66,
+              0.42
+            ],
+            [
+              0.81,
+              0.48
+            ],
+            [
+              1,
+              0.44
+            ],
+            [
+              1,
+              0.63
+            ],
+            [
+              0,
+              0.63
+            ]
+          ]
+        },
+        {
+          "id": "near-ridge",
+          "op": "fill",
+          "material": "near",
+          "polygon": [
+            [
+              0,
+              0.56
+            ],
+            [
+              0.12,
+              0.51
+            ],
+            [
+              0.25,
+              0.54
+            ],
+            [
+              0.34,
+              0.49
+            ],
+            [
+              0.46,
+              0.56
+            ],
+            [
+              0.56,
+              0.55
+            ],
+            [
+              0.7,
+              0.52
+            ],
+            [
+              0.83,
+              0.54
+            ],
+            [
+              1,
+              0.49
+            ],
+            [
+              1,
+              0.66
+            ],
+            [
+              0,
+              0.66
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "id": "water",
+      "commands": [
+        {
+          "id": "lake-body",
+          "op": "fill",
+          "material": "lake",
+          "polygon": [
+            [
+              0,
+              0.57
+            ],
+            [
+              0.4,
+              0.585
+            ],
+            [
+              0.72,
+              0.56
+            ],
+            [
+              1,
+              0.57
+            ],
+            [
+              1,
+              1
+            ],
+            [
+              0,
+              1
+            ]
+          ]
+        },
+        {
+          "id": "lake-settle",
+          "op": "wait",
+          "steps": 8
+        },
+        {
+          "id": "light-ripples",
+          "op": "family",
+          "material": "reflection",
+          "path": [
+            [
+              0.1,
+              0.62,
+              0.2
+            ],
+            [
+              0.25,
+              0.619,
+              0.8
+            ],
+            [
+              0.48,
+              0.624,
+              0.1
+            ]
+          ],
+          "count": 36,
+          "spread": [
+            0.29,
+            0.29
+          ],
+          "jitter": 0.06
+        },
+        {
+          "id": "dark-ripples",
+          "op": "family",
+          "material": "current",
+          "path": [
+            [
+              0.01,
+              0.69,
+              0.2
+            ],
+            [
+              0.21,
+              0.688,
+              0.9
+            ],
+            [
+              0.4,
+              0.694,
+              0.15
+            ]
+          ],
+          "count": 28,
+          "spread": [
+            0.4,
+            0.24
+          ],
+          "jitter": 0.07
+        }
+      ]
+    },
+    {
+      "id": "foreground",
+      "commands": [
+        {
+          "id": "left-bank",
+          "op": "stroke",
+          "material": "bank",
+          "path": [
+            [
+              -0.03,
+              0.95,
+              0.7
+            ],
+            [
+              0.12,
+              0.91,
+              1
+            ],
+            [
+              0.29,
+              0.96,
+              0.65
+            ],
+            [
+              0.48,
+              1.02,
+              0.2
+            ]
+          ]
+        },
+        {
+          "id": "right-bank",
+          "op": "stroke",
+          "material": "bank",
+          "path": [
+            [
+              0.73,
+              1.02,
+              0.3
+            ],
+            [
+              0.89,
+              0.96,
+              0.7
+            ],
+            [
+              1.04,
+              0.91,
+              1
+            ]
+          ]
+        },
+        {
+          "id": "reeds-left",
+          "op": "family",
+          "material": "reed",
+          "path": [
+            [
+              0.04,
+              0.97,
+              1
+            ],
+            [
+              0.058,
+              0.85,
+              0.58
+            ],
+            [
+              0.092,
+              0.74,
+              0.08
+            ]
+          ],
+          "count": 35,
+          "spread": [
+            0.24,
+            0.025
+          ],
+          "jitter": 0.08,
+          "intent": {
+            "hesitation": 0.12
+          }
+        },
+        {
+          "id": "reeds-right",
+          "op": "family",
+          "material": "reed",
+          "path": [
+            [
+              0.82,
+              1.02,
+              1
+            ],
+            [
+              0.84,
+              0.9,
+              0.5
+            ],
+            [
+              0.855,
+              0.79,
+              0.05
+            ]
+          ],
+          "count": 17,
+          "spread": [
+            0.16,
+            -0.01
+          ],
+          "jitter": 0.055
+        },
+        {
+          "id": "warm-far-window",
+          "op": "stroke",
+          "material": "gold",
+          "path": [
+            [
+              0.741,
+              0.558,
+              0.3
+            ],
+            [
+              0.753,
+              0.556,
+              0.8
+            ],
+            [
+              0.766,
+              0.56,
+              0.3
+            ]
+          ]
+        },
+        {
+          "id": "warm-reflection",
+          "op": "stroke",
+          "material": "gold",
+          "path": [
+            [
+              0.742,
+              0.611,
+              0.07
+            ],
+            [
+              0.764,
+              0.611,
+              0.1
+            ]
+          ]
+        }
+      ]
+    }
+  ]
+}

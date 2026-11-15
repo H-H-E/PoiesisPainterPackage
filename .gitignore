@@ -1,0 +1,11 @@
+node_modules/
+dist/
+studio/dist/
+studio/studio.js
+.cache/
+playwright-report/
+test-results/
+references/
+*.log
+.DS_Store
+

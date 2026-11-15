@@ -1,0 +1,50 @@
+{
+  "name": "@poiesis/painter",
+  "version": "0.1.0",
+  "description": "A browser-first painting instrument with continuous marks and a validated agent score",
+  "type": "module",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/H-H-E/PoiesisPainterPackage.git"
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./schema": "./src/schema.json"
+  },
+  "files": [
+    "dist",
+    "src/schema.json",
+    "llms.txt",
+    "LICENSE",
+    "THIRD_PARTY_NOTICES.md",
+    "README.md"
+  ],
+  "scripts": {
+    "generate": "node scripts/generate-schema.mjs",
+    "build": "npm run generate && tsc && node scripts/build.mjs",
+    "test": "node --test tests/*.test.mjs",
+    "check": "npm run build && npm test",
+    "studio": "node scripts/serve.mjs",
+    "render": "node scripts/render.mjs",
+    "benchmark": "node benchmarks/run.mjs",
+    "test:browser": "node tests/browser.mjs",
+    "references": "node scripts/fetch-references.mjs"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "devDependencies": {
+    "@napi-rs/canvas": "1.1.1",
+    "ajv": "8.20.0",
+    "esbuild": "0.28.2",
+    "json-schema-to-typescript": "16.0.0",
+    "playwright": "1.65.1",
+    "typescript": "7.0.2"
+  }
+}
