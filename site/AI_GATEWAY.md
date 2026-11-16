@@ -15,6 +15,8 @@ Asking a small model for a full painting score can create hundreds of numeric co
 5. The deterministic compiler reuses six real hand-worked landscape grammars, applies restrained color shifts and composes focal ink/watercolor/oil geometry. It emits normal PaintingDocument v1.0 with stable IDs.
 6. The server runs the **authoritative package validator** and the stricter site workload budget. The browser validates once more, then renders with the actual Painter. The JSON is editable and both JSON/PNG exports use the committed score.
 
+After the first valid result, the **New local variation** button recompiles the same returned plan at the next seed directly in the browser. It does **not** call AI Gateway again. This avoids repeated model inference for seed-only iterations.
+
 This approach reduces generated tokens and avoids schema hallucinations. The chosen scene may only approximate requests outside supported landscape subjects. It is **not** a demonstrated improvement in subjective aesthetics, inference speed or production reliability; those require real model evaluation.
 
 ## Contract
