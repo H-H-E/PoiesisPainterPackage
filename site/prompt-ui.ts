@@ -52,6 +52,7 @@ export async function mountPromptUI(applyScore: (score: unknown) => Promise<bool
     message('Reusing the previous composition with a new seed—no Gateway call…');
     try {
       const nextSeed = (lastSeed + 1) >>> 0;
+      // @ts-ignore The plan compiler is a dependency-free authored ESM module.
       const { compilePlan } = await import('./ai-plan.mjs');
       const score = compilePlan(lastPlan, nextSeed);
       const applied = await applyScore(score);
