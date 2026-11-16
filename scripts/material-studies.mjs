@@ -55,12 +55,12 @@ const plans=[
  {id:'wet-cross',description:'Two intersecting still-wet watercolor passages',params:{paper:{texture:.85,absorbency:.25},seed:127,first:wet,second:crossing,between:6,after:44}},
  {id:'dry-cross',description:'Identical crossing gestures but the lower passage is explicitly dried',params:{paper:{texture:.85,absorbency:.25},seed:127,first:wet,second:crossing,between:6,after:44,dryBetween:true}},
  {id:'oil-depletion',description:'Orange oil crossing a blue wet underpaint in sequential loaded-to-depleted short chunks',params:{paper:{texture:.65,absorbency:.4},seed:127,medium:oil,capacity:950,chunks:15}},
- {id:'knife-relief',description:'Same short chunks as oil-depletion, using a knife height field',params:{paper:{texture:.65,absorbency:.4},seed:127,medium:knife,capacity:28,chunks:15}},
+ {id:'knife-relief',description:'Same short-chunk gesture as oil-depletion, with a smaller 28-unit knife reservoir for rapid depletion and knife relief',params:{paper:{texture:.65,absorbency:.4},seed:127,medium:knife,capacity:28,chunks:15}},
 ];
 function runField(impl,plan){
  const {MaterialSurface:Surface,createReservoir:reservoirFactory}=impl;
  const s=new Surface(240,180,plan.params.paper,plan.params.seed);
- let budgetStart=null,budgetEnd=null,reservoir=null;
+ let budgetStart=null,budgetEnd=null,reservoir=null,reservoirInitial=null,underpaintMass=null,chunksExecuted=0;
  if(plan.id==='water-wet'||plan.id==='water-dry'){
   s.deposit(masks.horizontal.data,masks.horizontal.area,plan.params.medium);
   budgetStart=s.stats().pigmentMass;s.step(plan.params.steps);budgetEnd=s.stats().pigmentMass;
@@ -74,17 +74,25 @@ function runField(impl,plan){
   // Same source underpainting and mask trajectory for oil and palette knife.
   const blue={...plan.params.medium,color:'#325b86',wetness:1,load:.85};
   s.deposit(mask(86,38,2),region(16,70,86,38),blue);
-  reservoir=reservoirFactory(plan.params.medium);reservoir.capacity=950;reservoir.remaining=950;
-  budgetStart=s.stats().pigmentMass+reservoir.remaining;
-  for(let k=0;k<15;k++){
+  const {capacity,chunks}=plan.params;
+  if(!Number.isFinite(capacity)||capacity<=0||!Number.isSafeInteger(chunks)||chunks<1||chunks>15)throw new RangeError('Oil/knife study requires positive finite capacity and 1..15 chunks.');
+  reservoir=reservoirFactory(plan.params.medium);
+  // The manifest must record the same load that is actually supplied to the solver.
+  reservoir.capacity=capacity;reservoir.remaining=capacity;
+  reservoirInitial={capacity:reservoir.capacity,remaining:reservoir.remaining};
+  underpaintMass=s.stats().pigmentMass;
+  budgetStart=underpaintMass+reservoir.remaining;
+  for(let k=0;k<chunks;k++){
    const x=18+k*13;
    s.deposit(mask(18,32,2),region(x,76,18,32),plan.params.medium,reservoir);
+   chunksExecuted++;
   }
   budgetEnd=s.stats().pigmentMass+reservoir.remaining;
   s.step(12);
  }
  const stats=s.stats(),raw=fieldSummary(s);
  const result={id:plan.id,params:plan.params,stats,raw,budgetStart,budgetEnd,massDelta:budgetEnd-budgetStart,
+  reservoirInitial,underpaintMass,chunksExecuted,
   reservoir:reservoir?{remaining:reservoir.remaining,capacity:reservoir.capacity,pickedUp:reservoir.pickedUp,color:reservoir.color}:null,
   rgba:new Uint8ClampedArray(s.rgba())};
  s.dispose();
@@ -148,6 +156,7 @@ for(const plan of plans){
  const describe=result=>result?{
   stats:result.stats,raw:result.raw,budgetStart:result.budgetStart,budgetEnd:result.budgetEnd,
   massDelta:result.massDelta,reservoir:result.reservoir,
+  reservoirInitial:result.reservoirInitial,underpaintMass:result.underpaintMass,chunksExecuted:result.chunksExecuted,
   rgbaSha256:hash(result.rgba)
  }:null;
  const changedPixels=before?after.rgba.reduce((total,value,i)=>total+(value!==before.rgba[i]?1:0),0):null;
