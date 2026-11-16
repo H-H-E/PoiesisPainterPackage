@@ -43,7 +43,7 @@ At `../references/p5.brush`, run `npm install && npm test`, then `npm run serve`
 | PB07 | `addField` one constant-angle field; activate, draw flowLine; change to perpendicular field | Tangent direction responds to chosen field with seed held fixed |
 | PB08 | Render A, then a second canvas using `load`; render again on first, with matching flush operations | Target isolation and explicit flush verified; record WebGL2 support/fallback if context unavailable |
 | PB09 | Overlay blue/ochre masked strokes and compare against same blue/blue case; sample central RGB | K/S mix differs from plain source-over; do not equate visual resemblance with physical reflectance correctness |
-| PB10 | Repeat upstream `npm run measure:bench -- --angle=metal` only if that backend is available; otherwise record chosen supported ANGLE backend | Retain raw source timing/fixtures/hardware; compare only matched input/render backend, NOT upstream published ms to unrelated Poiesis runs |
+| PB10 | Run upstream `npm run measure:bench` on a supported browser backend; separately record the ANGLE adapter and command arguments | Retain raw source timing/fixtures/hardware; compare only matched input/render backend, NOT upstream published ms to unrelated Poiesis runs |
 
 ## oil-paint-agents — CPU bristle oil model
 
