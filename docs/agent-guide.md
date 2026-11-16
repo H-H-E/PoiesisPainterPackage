@@ -103,7 +103,7 @@ The renderer is deterministic for the same score, dimensions, implementation and
 
 Use [agent-challenge-prompt.txt](../examples/agent-challenge-prompt.txt) as the full user instruction and [agent-challenge.json](../examples/agent-challenge.json) as a reference response. The actual scene/layout remains an artistic choice, not a prescribed template. The response uses at least 240 seeded family marks (100 water + 140 reeds) plus the ridge and accent.
 
-**Explicit counted payload:** prompt plus one newline separator plus example JSON = ${chars} UTF-8 **bytes** and ${chars} ASCII **characters** (prompt ${p.length}, JSON ${j.length}). This is *not* a token count, nor does it include an unseen model system message or any tool wrapper. No tokenizer is installed or used; do not infer tokens from character counts. A future evaluation should name a tokenizer/model and measure actual responses, schema-repair success and renders rather than claiming small-model compliance from prompt length.
+**Explicit counted setup + command:** `llms.txt` (2350 UTF-8 bytes / 2348 characters) + one newline separator + the full prompt (983 bytes / characters) = **3334 UTF-8 bytes / 3332 characters**. Including a second newline and the reference response JSON (854 bytes / characters) gives **4189 UTF-8 bytes / 4187 characters** for the full worked example. These are *not* token counts and exclude any unseen model system message or tool wrapper. No tokenizer is installed or used; do not infer tokens from character counts. A future evaluation should name a tokenizer/model and measure actual responses, schema-repair success and renders rather than claiming small-model compliance from prompt length.
 
 ## Reproducing checks
 
