@@ -242,6 +242,19 @@ export class MaterialSurface {
       const c = (this.mobile[a] / wa - this.mobile[b] / wb) * Math.min(wa, wb) * coefficient * .08;
       if (c > 0) this.transfer(a, b, c); else this.transfer(b, a, -c);
     }
+    // Wet watercolor particles preferentially lodge in low-tooth paper valleys.
+    // This is pairwise mobile-pigment exchange, not pigment creation or a noise overlay.
+    // Both cells must be wet; ink and already fixed pigment are unaffected.
+    if (!isInk && this.texture > 0 && wa > .03 && wb > .03) {
+      const grain = Math.max(this.tag[a] >>> 3, this.tag[b] >>> 3) / 31;
+      if (grain > 0) {
+        const ax = a % this.width, bx = b % this.width;
+        const slope = this.tooth(ax, (a - ax) / this.width) - this.tooth(bx, (b - bx) / this.width);
+        const shift = slope * grain * this.texture * Math.min(wa, wb) * .018;
+        if (shift > 0) this.transfer(a, b, shift);
+        else if (shift < 0) this.transfer(b, a, -shift);
+      }
+    }
   }
   /** n is a bounded number of solver updates, not seconds. Results are deterministic
    * for the same JS arithmetic and command order; no cross-device bit identity claim.
@@ -262,9 +275,14 @@ export class MaterialSurface {
           if (y + 1 < y1) this.flux(i, i + this.width);
         }
       }
+      let wetX0 = this.width, wetY0 = this.height, wetX1 = -1, wetY1 = -1;
       for (let y = y0; y < y1; y++) for (let x = x0; x < x1; x++) {
         const i = y * this.width + x, kind = this.tag[i] & 7;
         if (this.carrier[i] < 1e-7) { this.carrier[i] = 0; this.mobile[i] = 0; continue; }
+        // Retain the active wet footprint, not every border visited in prior steps.
+        // The next iteration adds a single-cell halo for conservative pair fluxes.
+        wetX0 = Math.min(wetX0, x); wetY0 = Math.min(wetY0, y);
+        wetX1 = Math.max(wetX1, x); wetY1 = Math.max(wetY1, y);
         const grain = (this.tag[i] >>> 3) / 31;
         if (kind === 2) { this.carrier[i] *= .997; this.mobile[i] *= .997; continue; }
         if (kind >= 4) { this.carrier[i] = this.mobile[i] = 0; continue; }
@@ -274,14 +292,19 @@ export class MaterialSurface {
         const loss = .018 + this.absorbency * .035 + front * .035;
         this.carrier[i] = water * (1 - loss);
         // Deposition speeds up at an evaporating front and in paper valleys.
-        const settle = loss * (.6 + (1 - this.tooth(x, y)) * grain * 2 + front * 3) + (water < .08 ? .1 : 0);
+        const settle = loss * (.6 + (1 - this.tooth(x, y)) * grain * 2.6 + front * (3 + grain)) + (water < .08 ? .1 : 0);
         this.mobile[i] = Math.max(0, Math.min(this.pigment[i], this.mobile[i] * (1 - Math.min(.7, settle))));
       }
-      this.mark({ x: x0, y: y0, width: x1 - x0, height: y1 - y0 });
+      this.dirtyBox = this.union(this.dirtyBox, { x: x0, y: y0, width: x1 - x0, height: y1 - y0 });
+      this.activeBox = wetX1 < 0 ? null : { x: wetX0, y: wetY0, width: wetX1 - wetX0 + 1, height: wetY1 - wetY0 + 1 };
     }
   }
   /** Freeze all current pigment. Future marks cannot pick it up; pixels stay unchanged. */
-  dry(): void { this.alive(); this.carrier.fill(0); this.mobile.fill(0); }
+  dry(): void {
+    this.alive();
+    if (this.pixels && this.activeBox) this.dirtyBox = this.union(this.dirtyBox, this.activeBox);
+    this.carrier.fill(0); this.mobile.fill(0); this.activeBox = null;
+  }
 
   /** Transparent layer presentation. This cache is owned by the surface; copy it if
    * retaining a snapshot across later deposit/step calls. No implicit simulation runs.
@@ -300,8 +323,12 @@ export class MaterialSurface {
         const dy = this.relief[Math.min(this.height - 1, y + 1) * this.width + x] - this.relief[Math.max(0, y - 1) * this.width + x];
         const normal = 1 / Math.sqrt(dx * dx + dy * dy + 1);
         const diffuse = (-dx * -.45 - dy * -.6 + .66) * normal;
-        shade = clamp(.91 + .16 * diffuse, .72, 1.2);
-        specular = Math.max(0, diffuse - .72) ** 2 * .22;
+        // Height gradients control the broad highlight, while fixed paper tooth
+        // perturbs thin ridges. Wet binder is glossier; dry() invalidates that region.
+        const height = this.relief[i], gloss = clamp(this.carrier[i]);
+        const microRelief = (this.tooth(x, y) - .5) * this.texture * Math.min(.1, height * .12);
+        shade = clamp(.91 + .16 * diffuse + microRelief, .72, 1.2);
+        specular = Math.max(0, diffuse - .6) ** 2 * (.09 + .4 * gloss) + .028 * gloss * clamp(height * .5);
       }
       const alpha = (1 - Math.exp(-p * (kind === 1 ? 1.8 : kind === 2 ? 5 : kind === 5 ? 1.8 : kind === 4 ? 3.2 : 3.5))) * 255;
       if (alpha < .5) { this.pixels[o] = this.pixels[o + 1] = this.pixels[o + 2] = this.pixels[o + 3] = 0; continue; }
