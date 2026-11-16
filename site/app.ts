@@ -1,6 +1,6 @@
 const loading = document.getElementById('playground-loading')!;
 const workbench = document.getElementById('workbench')!;
-let playground: { selectScene: (name: string) => Promise<void> } | null = null;
+let playground: { selectScene: (name: string) => Promise<void>; applyScore: (score: unknown) => Promise<boolean> } | null = null;
 let loadingPromise: Promise<void> | null = null;
 
 function supported(): boolean {
@@ -39,6 +39,28 @@ async function loadPlayground(): Promise<void> {
     });
   }
   await loadingPromise;
+}
+let aiLoading: Promise<void> | null = null;
+function loadAi() {
+  if (!aiLoading) aiLoading = import('./prompt-ui.ts').then(module => module.mountPromptUI(async score => {
+    await loadPlayground();
+    return playground ? playground.applyScore(score) : false;
+  })).catch(error => {
+    const node = document.getElementById('ai-status');
+    if (node) node.textContent = 'Prompt controls are unavailable. Manual painting still works.';
+    console.warn('AI panel could not load:', error);
+  });
+  return aiLoading;
+}
+const promptSection = document.getElementById('prompt-to-paint');
+if (promptSection) {
+  if (typeof IntersectionObserver === 'undefined') void loadAi();
+  else {
+    const observer = new IntersectionObserver(entries => {
+      if (entries.some(entry => entry.isIntersecting)) { observer.disconnect(); void loadAi(); }
+    }, { rootMargin: '160px 0px' });
+    observer.observe(promptSection);
+  }
 }
 document.getElementById('load-playground')?.addEventListener('click', () => { void loadPlayground(); });
 document.querySelectorAll<HTMLAnchorElement>('[data-open-playground]').forEach(link => link.addEventListener('click', () => { void loadPlayground(); }));

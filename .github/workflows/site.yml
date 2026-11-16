@@ -4,6 +4,7 @@ on:
   pull_request:
     paths:
       - 'site/**'
+      - 'api/**'
       - 'vercel.json'
       - '.github/workflows/site.yml'
       - 'src/**'
@@ -12,6 +13,7 @@ on:
     branches: [main, 'feat/**']
     paths:
       - 'site/**'
+      - 'api/**'
       - 'vercel.json'
       - '.github/workflows/site.yml'
       - 'src/**'
@@ -40,6 +42,8 @@ jobs:
         run: npx tsc --project site/tsconfig.json
       - name: Check score contract, budgets and native deterministic render
         run: node --test site/contract.test.mjs
+      - name: Verify prompt compiler and mocked AI Gateway endpoint (no credentials)
+        run: node --test site/prompt.test.mjs
       - name: Install Chromium
         run: npx playwright install --with-deps chromium
       - name: Exercise desktop, touch, exports and invalid-input recovery

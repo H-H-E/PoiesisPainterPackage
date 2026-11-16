@@ -13,7 +13,7 @@ const $ = <T extends HTMLElement>(id: string): T => {
   return element as T;
 };
 
-export async function mountPlayground(): Promise<{ selectScene: (name: string) => Promise<void> }> {
+export async function mountPlayground(): Promise<{ selectScene: (name: string) => Promise<void>; applyScore: (score: unknown) => Promise<boolean> }> {
   const canvas = $<HTMLCanvasElement>('play-canvas');
   if (!canvas.getContext('2d')) throw new Error('Canvas2D is not available.');
   const painter = new Painter(canvas, { historyLimit: 4 });
@@ -33,6 +33,7 @@ export async function mountPlayground(): Promise<{ selectScene: (name: string) =
   let controller: AbortController | null = null;
   let busy = false;
   let committed = false;
+  let promptScore: PaintingDocument | null = null;
 
   function setMessage(message: string, error = false) {
     status.textContent = message;
@@ -161,6 +162,13 @@ export async function mountPlayground(): Promise<{ selectScene: (name: string) =
   }
   async function selectScene(name: string, chosenSeed?: number) {
     if (busy) return;
+    if (name === 'prompt') {
+      if (!promptScore) { setMessage('No AI-generated score is available yet.', true); return; }
+      sceneSelect.value = 'prompt';
+      writeDraft(structuredClone(promptScore));
+      await renderScore();
+      return;
+    }
     const generated = isGenerativeName(name);
     if (!generated && !['landscape', 'ink', 'watercolor', 'oil', 'studies'].includes(name)) {
       setMessage('Unknown study: select an example from the gallery.', true); return;
@@ -171,6 +179,28 @@ export async function mountPlayground(): Promise<{ selectScene: (name: string) =
       : createScene(name, 480, 320);
     writeDraft(next as PaintingDocument);
     await renderScore();
+  }
+  async function applyScore(score: unknown): Promise<boolean> {
+    if (busy) return false;
+    const validation = validatePainting(score);
+    if (!validation.valid) {
+      showIssues(validation.errors);
+      setMessage('AI score was rejected by local validation.', true);
+      return false;
+    }
+    const limits = checkSiteBudget(score, validation.workload, JSON.stringify(score).length);
+    if (limits.length) {
+      showIssues(limits);
+      setMessage('AI score exceeds the local painting budget.', true);
+      return false;
+    }
+    const candidate = structuredClone(score) as PaintingDocument;
+    promptScore = candidate;
+    $<HTMLOptionElement>('prompt-option').disabled = false;
+    sceneSelect.value = 'prompt';
+    writeDraft(candidate);
+    await renderScore();
+    return JSON.stringify(painter.document) === JSON.stringify(candidate);
   }
   function editMaterial(field: keyof Material, value: string | number) {
     if (busy) return;
@@ -276,5 +306,5 @@ export async function mountPlayground(): Promise<{ selectScene: (name: string) =
     }
   });
   await selectScene('landscape');
-  return { selectScene };
+  return { selectScene, applyScore };
 }

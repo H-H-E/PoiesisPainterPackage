@@ -4,6 +4,7 @@ import { mkdir, readFile, stat, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { chromium } from 'playwright';
 import { createSiteServer } from './serve.mjs';
+import { compilePlan } from './ai-plan.mjs';
 
 const evidence = resolve('evidence/site');
 await mkdir(evidence, { recursive: true });
@@ -30,6 +31,17 @@ const checkOverflow = page => page.evaluate(() => ({
 }));
 try {
   const desktop = await browser.newPage({ viewport: { width: 1440, height: 900 }, deviceScaleFactor: 1 });
+  const mockPlan = { landscape:'estuary', lighting:'dawn', weather:'mist', palette:'cool', focal:'boat', placement:'center', accent:'ochre', density:'sparse' };
+  let failPrompt = false;
+  await desktop.route('**/api/paint', async route => {
+    if (route.request().method() === 'GET') {
+      await route.fulfill({status:200,contentType:'application/json',body:JSON.stringify({enabled:true,model:'nvidia/nemotron-3.5-lightning-free',experimental:true})});
+      return;
+    }
+    const body = route.request().postDataJSON();
+    const score = failPrompt ? {version:'wrong'} : compilePlan(mockPlan,body.seed);
+    await route.fulfill({status:200,contentType:'application/json',body:JSON.stringify({score,plan:mockPlan,model:'nvidia/nemotron-3.5-lightning-free',attempts:1})});
+  });
   desktop.on('pageerror', error => errors.push('desktop: ' + error.message));
   await desktop.goto(base, { waitUntil: 'load' });
   assert.match(await desktop.title(), /Poiesis Painter/);
@@ -247,6 +259,35 @@ try {
   await backJSON.saveAs(resolve(evidence, 'after-browser-back.json'));
   assert.equal(JSON.parse(await readFile(resolve(evidence, 'after-browser-back.json'), 'utf8')).seed, documentAfterBack.seed);
   record('real Back navigation supports editing, rendering and PNG/JSON exports');
+
+  // Browser UI uses a deterministic mocked Gateway response; no real provider call.
+  await desktop.locator('#prompt-to-paint').scrollIntoViewIfNeeded();
+  await desktop.waitForFunction(() => !document.getElementById('ai-submit').disabled, null, { timeout: 20000 });
+  await desktop.locator('#ai-description').fill('A lonely boat on a misty coast at dawn, with soft blue water');
+  await desktop.locator('#ai-seed').fill('104');
+  await desktop.locator('#ai-submit').click();
+  await desktop.waitForFunction(() => document.getElementById('ai-status')?.textContent?.startsWith('Scene painted'), null, {timeout:120000});
+  assert.equal(await desktop.locator('#scene-select').inputValue(),'prompt');
+  const promptScore = JSON.parse(await desktop.locator('#score-editor').inputValue());
+  assert.equal(promptScore.seed,104);
+  assert.ok(promptScore.layers.some(l => l.commands.some(c => c.id?.startsWith('ai-'))));
+  const promptPixels = await digest(desktop);
+  await desktop.locator('#render-button').click();
+  await waitRendered(desktop);
+  assert.equal(await digest(desktop),promptPixels,'prompted painting rerenders exactly');
+  const promptExport = desktop.waitForEvent('download');
+  await desktop.locator('#download-score').click();
+  const promptFile = await promptExport;
+  await promptFile.saveAs(resolve(evidence,'prompt-painting-score.json'));
+  assert.deepEqual(JSON.parse(await readFile(resolve(evidence,'prompt-painting-score.json'),'utf8')),promptScore);
+  await desktop.locator('#prompt-to-paint').screenshot({path:resolve(evidence,'prompt-panel-desktop.png'),animations:'disabled'});
+  record('mocked Gateway prompt becomes editable deterministic Painter JSON and exports');
+  // Invalid server payload must not replace the completed painting.
+  failPrompt = true;
+  await desktop.locator('#ai-submit').click();
+  await desktop.waitForFunction(() => document.getElementById('ai-status')?.getAttribute('role') === 'alert', null, {timeout:30000});
+  assert.equal(await digest(desktop),promptPixels);
+  record('invalid AI response preserves committed canvas and exported score');
 
   const mobileContext = await browser.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 1, hasTouch: true, isMobile: true });
   const mobile = await mobileContext.newPage();
