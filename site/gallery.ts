@@ -1,6 +1,8 @@
 import { Painter, validatePainting } from '../src/index.js';
 // @ts-ignore Existing authored JavaScript examples are consumed by studio and site.
 import { createScene } from '../examples/scenes.mjs';
+// @ts-ignore The original procedural landscape grammar is intentionally dependency-free JS.
+import { createGenerativeLandscape, isGenerativeName } from './landscapes.mjs';
 
 let queue: Promise<void> = Promise.resolve();
 
@@ -9,7 +11,10 @@ export function paintPreview(canvas: HTMLCanvasElement): Promise<void> {
   const task = async () => {
     const placeholder = document.querySelector<HTMLElement>('[data-for="' + canvas.id + '"]');
     try {
-      const document = createScene(canvas.dataset.preview, canvas.width, canvas.height);
+      const name = canvas.dataset.preview || 'landscape';
+      const document = isGenerativeName(name)
+        ? createGenerativeLandscape(name, canvas.width, canvas.height)
+        : createScene(name, canvas.width, canvas.height);
       const validation = validatePainting(document);
       if (!validation.valid) throw new Error('Example failed validation: ' + validation.errors[0].message);
       const painter = new Painter(canvas, { historyLimit: 0 });

@@ -2,6 +2,8 @@ import { Painter, validatePainting, capabilities, resolveMaterial } from '../src
 import type { PaintingDocument, Material } from '../src/types.generated.js';
 // @ts-ignore Shared authored JavaScript scene fixtures.
 import { createScene } from '../examples/scenes.mjs';
+// @ts-ignore Procedural score grammar is authored as dependency-free JavaScript.
+import { createGenerativeLandscape, isGenerativeName } from './landscapes.mjs';
 // @ts-ignore ESM utility is plain JavaScript and tested with Node.
 import { checkSiteBudget, parseScore, validSeed } from './budget.mjs';
 
@@ -84,8 +86,8 @@ export async function mountPlayground(): Promise<{ selectScene: (name: string) =
   }
   function setBusy(value: boolean) {
     busy = value;
-    for (const id of ['render-button', 'reset-button', 'validate-button', 'format-score', 'apply-seed', 'download-png', 'download-score']) {
-      $<HTMLButtonElement>(id).disabled = value || ((id === 'download-png' || id === 'download-score') && !committed);
+    for (const id of ['render-button', 'reset-button', 'variation-button', 'validate-button', 'format-score', 'apply-seed', 'download-png', 'download-score']) {
+      $<HTMLButtonElement>(id).disabled = value || (id === 'variation-button' && !isGenerativeName(sceneSelect.value)) || ((id === 'download-png' || id === 'download-score') && !committed);
     }
     for (const select of [sceneSelect, materialSelect, medium]) select.disabled = value;
     for (const input of [seed, size, wetness, color, editor]) input.disabled = value;
@@ -157,13 +159,17 @@ export async function mountPlayground(): Promise<{ selectScene: (name: string) =
       setBusy(false);
     }
   }
-  async function selectScene(name: string) {
+  async function selectScene(name: string, chosenSeed?: number) {
     if (busy) return;
-    if (!['landscape', 'ink', 'watercolor', 'oil', 'studies'].includes(name)) {
+    const generated = isGenerativeName(name);
+    if (!generated && !['landscape', 'ink', 'watercolor', 'oil', 'studies'].includes(name)) {
       setMessage('Unknown study: select an example from the gallery.', true); return;
     }
     sceneSelect.value = name;
-    writeDraft(createScene(name, 480, 320) as PaintingDocument);
+    const next = generated
+      ? createGenerativeLandscape(name, 480, 320, chosenSeed)
+      : createScene(name, 480, 320);
+    writeDraft(next as PaintingDocument);
     await renderScore();
   }
   function editMaterial(field: keyof Material, value: string | number) {
@@ -190,6 +196,13 @@ export async function mountPlayground(): Promise<{ selectScene: (name: string) =
   $('backend-label').textContent = capabilities().backend + ' / local CPU';
   $('render-button').addEventListener('click', () => { void renderScore(); });
   $('reset-button').addEventListener('click', () => { void selectScene(sceneSelect.value); });
+  $('variation-button').addEventListener('click', () => {
+    if (busy || !committed || !isGenerativeName(sceneSelect.value)) return;
+    // Variations derive from the last committed seed and deliberately replace a draft.
+    const previous = painter.document;
+    if (!previous) return;
+    void selectScene(sceneSelect.value, (previous.seed + 1) >>> 0);
+  });
   sceneSelect.addEventListener('change', () => { void selectScene(sceneSelect.value); });
   $('validate-button').addEventListener('click', () => {
     if (readDraft()) setMessage('Score validated. Render to see your changes.');
@@ -216,8 +229,12 @@ export async function mountPlayground(): Promise<{ selectScene: (name: string) =
       setMessage('Seed is invalid. The previous painting is intact.', true);
       return;
     }
-    document.seed = value;
-    writeDraft(document);
+    // In generated scenes, the seed controls the composition as well as pigment noise.
+    // The UI explains that regenerating replaces any unrendered score edits.
+    const seeded = isGenerativeName(sceneSelect.value)
+      ? createGenerativeLandscape(sceneSelect.value, document.width, document.height, value)
+      : { ...document, seed: value };
+    writeDraft(seeded as PaintingDocument);
     void renderScore();
   });
   materialSelect.addEventListener('change', () => {
@@ -243,7 +260,21 @@ export async function mountPlayground(): Promise<{ selectScene: (name: string) =
     const last = painter.document!;
     download(new Blob([painter.serialize(true) + '\n'], { type: 'application/json' }), 'poiesis-' + last.seed + '.json');
   });
-  window.addEventListener('pagehide', () => painter.dispose(), { once: true });
+  // BFCache preserves this document and its event listeners across history travel.
+  // Keep the committed canvas and Painter alive when pagehide.persisted is true.
+  window.addEventListener('pagehide', (event: PageTransitionEvent) => {
+    if (event.persisted) {
+      controller?.abort(); // Stop unfinished work, retain committed pixels.
+    } else {
+      painter.dispose(); // A new document will be constructed on a normal Back load.
+    }
+  });
+  // This handler also remains installed after a cached page resumes.
+  window.addEventListener('pageshow', (event: PageTransitionEvent) => {
+    if (event.persisted && committed) {
+      setMessage('Restored from browser history. The painting and score are ready.');
+    }
+  });
   await selectScene('landscape');
   return { selectScene };
 }

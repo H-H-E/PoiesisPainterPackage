@@ -136,6 +136,118 @@ try {
   record('gallery cards navigate to a live editable example');
   await desktop.locator('#playground').screenshot({ path: resolve(evidence, 'playground-desktop.png'), animations: 'disabled' });
 
+  const landscapeIds = ['estuary', 'valley', 'headland', 'alpine', 'marsh', 'desert'];
+  assert.equal(await desktop.locator('.landscape-card').count(), landscapeIds.length);
+  for (const id of landscapeIds) {
+    const canvas = desktop.locator('#preview-gen-' + id);
+    await canvas.scrollIntoViewIfNeeded();
+    await desktop.waitForFunction(id => document.getElementById('preview-gen-' + id)?.dataset.rendered === 'true', id, { timeout: 180000 });
+  }
+  await desktop.locator('#landscape-collection').screenshot({ path: resolve(evidence, 'landscape-collection-desktop.png'), animations: 'disabled' });
+  record('six procedural landscapes all paint with real package pixels in the gallery');
+
+  await desktop.locator('[data-scene="gen-estuary"]').click();
+  await waitRendered(desktop);
+  assert.equal(await desktop.locator('#scene-select').inputValue(), 'gen-estuary');
+  assert.equal(await desktop.locator('#variation-button').isEnabled(), true);
+  const genOriginal = JSON.parse(await editor.inputValue());
+  const genHash = await digest(desktop);
+  assert.equal(genOriginal.seed, 1829);
+  assert.ok(genOriginal.layers.some(layer => layer.commands.some(command => command.op === 'stroke')));
+  await desktop.locator('#variation-button').click();
+  await waitRendered(desktop);
+  const genNext = JSON.parse(await editor.inputValue());
+  assert.equal(genNext.seed, 1830);
+  assert.notDeepEqual(genNext.layers, genOriginal.layers, 'new seed re-composes the landscape');
+  assert.notEqual(await digest(desktop), genHash);
+  record('variation button changes both geometry and rendered painting');
+
+  await desktop.locator('#seed-input').fill('42');
+  await desktop.locator('#apply-seed').click();
+  await waitRendered(desktop);
+  const genChosen = JSON.parse(await editor.inputValue());
+  assert.equal(genChosen.seed, 42);
+  assert.notDeepEqual(genChosen.layers, genNext.layers, 'manual seed re-composes the landscape');
+  const manualHash = await digest(desktop);
+  await desktop.locator('#render-button').click();
+  await waitRendered(desktop);
+  assert.equal(await digest(desktop), manualHash);
+  const genScoreEvent = desktop.waitForEvent('download');
+  await desktop.locator('#download-score').click();
+  const genScore = await genScoreEvent;
+  await genScore.saveAs(resolve(evidence, 'landscape-estuary-score.json'));
+  assert.deepEqual(JSON.parse(await readFile(resolve(evidence, 'landscape-estuary-score.json'), 'utf8')), genChosen);
+  const genPngEvent = desktop.waitForEvent('download');
+  await desktop.locator('#download-png').click();
+  const genPng = await genPngEvent;
+  await genPng.saveAs(resolve(evidence, 'landscape-estuary.png'));
+  assert.ok((await stat(resolve(evidence, 'landscape-estuary.png'))).size > 800);
+  await desktop.locator('#playground').screenshot({ path: resolve(evidence, 'landscape-editor-desktop.png'), animations: 'disabled' });
+  record('manual generative seed gives repeatable pixels, with exact PNG and score exports');
+
+  await desktop.locator('[data-scene="gen-desert"]').click();
+  await waitRendered(desktop);
+  assert.equal(await desktop.locator('#scene-select').inputValue(), 'gen-desert');
+  assert.equal(JSON.parse(await editor.inputValue()).seed, 9018);
+  await desktop.locator('#reset-button').click();
+  await waitRendered(desktop);
+  assert.equal(JSON.parse(await editor.inputValue()).seed, 9018);
+  record('distinct landscape designs can be selected and reset to their curated seed');
+
+  // Synthetic PageTransitionEvents verify the branch; they do NOT prove BFCache.
+  const beforeHistoryScore = JSON.parse(await editor.inputValue());
+  const beforeHistoryPixels = await digest(desktop);
+  await desktop.evaluate(() => {
+    window.dispatchEvent(new PageTransitionEvent('pagehide', { persisted: true }));
+    window.dispatchEvent(new PageTransitionEvent('pageshow', { persisted: true }));
+  });
+  await desktop.locator('#render-button').click();
+  await waitRendered(desktop);
+  assert.equal(await digest(desktop), beforeHistoryPixels);
+  assert.deepEqual(JSON.parse(await editor.inputValue()), beforeHistoryScore);
+  record('synthetic persisted pagehide/pageshow retains a usable Painter and exact pixels');
+
+  // Actual navigation away and browser Back (not a synthetic event).
+  // Playwright can interfere with bfcache, so capture pageshow.persisted.
+  await desktop.evaluate(() => {
+    window.__historyProbe = { token: 'live-painter', shows: [], hides: [] };
+    window.addEventListener('pageshow', event => window.__historyProbe?.shows.push(event.persisted));
+    window.addEventListener('pagehide', event => window.__historyProbe?.hides.push(event.persisted));
+  });
+  await desktop.goto(base + 'away.html', { waitUntil: 'load' });
+  assert.match(await desktop.title(), /History navigation test/);
+  await desktop.goBack({ waitUntil: 'domcontentloaded', timeout: 120000 });
+  const historyProbe = await desktop.evaluate(() => window.__historyProbe || null);
+  const actuallyRestoredFromBFCache = !!historyProbe?.shows?.includes(true);
+  if (actuallyRestoredFromBFCache) {
+    assert.equal(await digest(desktop), beforeHistoryPixels, 'cached page retains canvas pixels');
+    assert.deepEqual(JSON.parse(await editor.inputValue()), beforeHistoryScore, 'cached page retains edited score');
+    record('actual Chromium back-forward cache restored live score and pixels');
+  } else {
+    record('real browser Back succeeded; actual bfcache restoration NOT observed');
+    await desktop.locator('[data-open-playground]').first().click();
+    await desktop.locator('#workbench').waitFor({ state: 'visible', timeout: 120000 });
+    await waitRendered(desktop);
+  }
+  const afterBack = desktop.locator('#score-editor');
+  const documentAfterBack = JSON.parse(await afterBack.inputValue());
+  documentAfterBack.seed = (documentAfterBack.seed + 1) >>> 0;
+  await afterBack.fill(JSON.stringify(documentAfterBack));
+  await desktop.locator('#render-button').click();
+  await waitRendered(desktop);
+  assert.equal(JSON.parse(await afterBack.inputValue()).seed, documentAfterBack.seed);
+  const backPNGEvent = desktop.waitForEvent('download');
+  await desktop.locator('#download-png').click();
+  const backPNG = await backPNGEvent;
+  await backPNG.saveAs(resolve(evidence, 'after-browser-back.png'));
+  assert.ok((await stat(resolve(evidence, 'after-browser-back.png'))).size > 800);
+  const backJSONEvent = desktop.waitForEvent('download');
+  await desktop.locator('#download-score').click();
+  const backJSON = await backJSONEvent;
+  await backJSON.saveAs(resolve(evidence, 'after-browser-back.json'));
+  assert.equal(JSON.parse(await readFile(resolve(evidence, 'after-browser-back.json'), 'utf8')).seed, documentAfterBack.seed);
+  record('real Back navigation supports editing, rendering and PNG/JSON exports');
+
   const mobileContext = await browser.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 1, hasTouch: true, isMobile: true });
   const mobile = await mobileContext.newPage();
   mobile.on('pageerror', error => errors.push('mobile: ' + error.message));
@@ -151,6 +263,16 @@ try {
   assert.ok(await mobile.locator('#render-button').isVisible());
   await mobile.locator('#playground').screenshot({ path: resolve(evidence, 'playground-mobile.png'), animations: 'disabled' });
   record('touch/mobile layout, working canvas and responsive controls without sideways overflow');
+  await mobile.locator('#landscape-collection').scrollIntoViewIfNeeded();
+  assert.equal(await mobile.locator('.landscape-card').count(), 6);
+  const landscapeOverflow = await checkOverflow(mobile);
+  assert.ok(landscapeOverflow.documentWidth <= landscapeOverflow.viewport + 1, 'mobile landscape grid overflow');
+  await mobile.locator('[data-scene="gen-valley"]').tap();
+  await waitRendered(mobile);
+  assert.equal(await mobile.locator('#scene-select').inputValue(), 'gen-valley');
+  assert.equal(await mobile.locator('#variation-button').isEnabled(), true);
+  await mobile.locator('#playground').screenshot({ path: resolve(evidence, 'landscape-editor-mobile.png'), animations: 'disabled' });
+  record('landscape selection, seed-variation affordance and editor work on mobile touch');
   await mobileContext.close();
 
   const unsupported = await browser.newPage({ viewport: { width: 800, height: 650 } });
@@ -171,6 +293,7 @@ try {
     mobile: { width: 390, height: 844, touch: true },
     checks,
     errors,
+    bfcache: { actualPageShowPersisted: actuallyRestoredFromBFCache, observedHistoryProbe: historyProbe, syntheticPersistedEventTest: true },
     pixels: { original, seeded, materialChanged: changed },
     generatedAt: new Date().toISOString()
   }, null, 2) + '\n');
