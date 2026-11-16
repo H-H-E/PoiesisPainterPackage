@@ -1,6 +1,13 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { validatePainting, assertPainting, PaintingValidationError, estimateWorkload } from '../dist/validate.js';
+import { validatePainting, assertPainting, PaintingValidationError, estimateWorkload, WORKLOAD_LIMITS } from '../dist/validate.js';
+import { readFileSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
+import { createCanvas } from '@napi-rs/canvas';
+import { Painter } from '../dist/painter.js';
+import generatedValidator from '../dist/validator.generated.js';
+import Ajv from 'ajv';
+
 
 const document = () => ({ version: '1.0', width: 800, height: 600, seed: 19, background: '#eff0e7', materials: { ink: { medium: 'ink', color: '#102030', size: 0.01 } }, layers: [{ id: 'foreground', commands: [{ id: 'reed', op: 'stroke', material: 'ink', path: [[0.1, 0.8, 1], [0.2, 0.3, 0.1]] }] }] });
 
@@ -102,4 +109,127 @@ test('raster budget rejects many very broad marks at print dimensions', () => {
 
 test('assertPainting returns a structured repairable error', () => {
   assert.throws(() => assertPainting({ version: '99' }), error => error instanceof PaintingValidationError && error.errors.every(issue => issue.path && issue.suggestion));
+});
+
+
+const root = new URL('../', import.meta.url);
+const guide = readFileSync(new URL('../docs/agent-guide.md', import.meta.url), 'utf8');
+const scoreBlocks = [...guide.matchAll(/<!-- score-example -->\s*\x60\x60\x60json\s*\n([\s\S]*?)\n\x60\x60\x60/g)];
+
+test('generated validator matches source schema and three complete guide scores parse', () => {
+  // --check recomputes both generated TypeScript and standalone Ajv output.
+  execFileSync(process.execPath, ['scripts/generate-schema.mjs', '--check'], { cwd: root, stdio: 'pipe' });
+  const schema = JSON.parse(readFileSync(new URL('../src/schema.json', import.meta.url), 'utf8'));
+  assert.equal(schema.properties.version.const, '1.0');
+  const optimized = structuredClone(schema);
+  optimized.definitions.Command.discriminator = { propertyName: 'op' };
+  const fresh = new Ajv({ allErrors: true, strict: true, strictTuples: false, discriminator: true }).compile(optimized);
+  assert.equal(scoreBlocks.length, 3, 'the guide must provide three labeled full scores');
+  const scores = [
+    document(),
+    ...scoreBlocks.map(match => JSON.parse(match[1])),
+    JSON.parse(readFileSync(new URL('../examples/agent-challenge.json', import.meta.url), 'utf8')),
+    ...['ink', 'landscape', 'watercolor', 'oil', 'studies'].map(name => JSON.parse(readFileSync(new URL(`../examples/${name}.json`, import.meta.url), 'utf8'))),
+  ];
+  for (const score of scores) {
+    assert.equal(Boolean(generatedValidator(score)), Boolean(fresh(score)), 'generated and source schemas disagree');
+    assert.equal(validatePainting(score).valid, true, `score rejected: ${JSON.stringify(validatePainting(score).errors)}`);
+  }
+  const invalid = structuredClone(document());
+  invalid.layers[0].commands[0].op = 'eval';
+  assert.equal(Boolean(generatedValidator(invalid)), Boolean(fresh(invalid)));
+  invalid.layers[0].commands[0].op = 'stroke';
+  invalid.layers[0].commands[0].path[0] = [1, 2, -1];
+  assert.equal(Boolean(generatedValidator(invalid)), Boolean(fresh(invalid)));
+});
+
+test('every guide score renders actual non-background pixels with the supported commands', async () => {
+  for (const [index, match] of scoreBlocks.entries()) {
+    const score = JSON.parse(match[1]), canvas = createCanvas(score.width, score.height);
+    const painter = new Painter(canvas, { canvasFactory: createCanvas, historyLimit: 0 });
+    try {
+      const report = await painter.render(score);
+      assert.equal(report.commands, score.layers.reduce((n, layer) => n + layer.commands.length, 0));
+      const pixels = canvas.getContext('2d').getImageData(0, 0, score.width, score.height).data;
+      const background = [1, 3, 5].map(start => parseInt(score.background.slice(start, start + 2), 16));
+      let changed = false;
+      for (let i = 0; i < pixels.length; i += 4) {
+        if (pixels[i] !== background[0] || pixels[i+1] !== background[1] || pixels[i+2] !== background[2]) { changed = true; break; }
+      }
+      assert.ok(changed, `guide score ${index + 1} did not paint any visible pixels`);
+    } finally {
+      painter.dispose();
+    }
+  }
+});
+
+test('missing required fields, unknown operations and deeply malformed branches identify JSON pointers', () => {
+  const scenarios = [
+    { name: 'wrong op', edit: score => { score.layers[0].commands[0].op = 'shader'; }, path: '/layers/0/commands/0/op', code: 'discriminator' },
+    { name: 'missing polygon', edit: score => { score.layers[0].commands[0] = { id: 'shape', op: 'fill', material: 'ink' }; }, path: '/layers/0/commands/0/polygon', code: 'required' },
+    { name: 'invalid pressure', edit: score => { score.layers[0].commands[0].path[1] = [0.2,0.3,-0.1]; }, path: '/layers/0/commands/0/path/1/2', code: 'minimum' },
+    { name: 'excess coordinate', edit: score => { score.layers[0].commands[0].path[0] = [0.1,0.2,0.3,0.4]; }, path: '/layers/0/commands/0/path/0', code: 'maxItems' },
+    { name: 'nested type', edit: score => { score.layers[0].commands[0].path[0] = null; }, path: '/layers/0/commands/0/path/0', code: 'type' },
+    { name: 'invalid blend', edit: score => { score.layers[0].blend = 'overlay'; }, path: '/layers/0/blend', code: 'enum' },
+    { name: 'invalid material key', edit: score => { score.materials['bad/name'] = score.materials.ink; }, path: '/materials/bad~1name', code: 'propertyNames' },
+    { name: 'reserved material key', edit: score => { score.materials = JSON.parse('{"__proto__":{"medium":"ink","color":"#102030","size":0.01}}'); }, path: '/materials/__proto__', code: 'propertyNames' },
+  ];
+  for (const scenario of scenarios) {
+    const score = document();
+    scenario.edit(score);
+    const result = validatePainting(score);
+    assert.equal(result.valid, false, scenario.name);
+    const error = result.errors.find(issue => issue.path === scenario.path && issue.code === scenario.code);
+    assert.ok(error, `${scenario.name}: ${JSON.stringify(result.errors)}`);
+    assert.ok(error.suggestion.length > 15, scenario.name);
+  }
+});
+
+test('semantic repairs identify the first duplicate and list actual material alternatives', () => {
+  const score = document();
+  score.layers.push({ id: 'reed', commands: [] });
+  score.layers[0].commands[0].material = 'ghost';
+  const result = validatePainting(score);
+  assert.equal(result.valid, false);
+  const duplicate = result.errors.find(issue => issue.code === 'duplicate-id');
+  assert.equal(duplicate.path, '/layers/1/id');
+  assert.match(duplicate.message, /\/layers\/0\/commands\/0\/id/);
+  const material = result.errors.find(issue => issue.code === 'missing-material');
+  assert.equal(material.path, '/layers/0/commands/0/material');
+  assert.match(material.suggestion, /"ink"/);
+});
+
+test('aggregate command counts short-circuit before costly geometric estimates', () => {
+  const score = document();
+  score.layers = [
+    { id: 'a', commands: Array.from({length: 5001}, (_, i) => ({id: `w${i}`,op:'wait',steps:1})) },
+    { id: 'b', commands: Array.from({length: 5000}, (_, i) => ({id: `w${i+5001}`,op:'wait',steps:1})) },
+  ];
+  const result = validatePainting(score);
+  assert.equal(result.valid, false);
+  assert.equal(result.errors[0]?.code, 'workload-commands');
+  assert.equal(result.errors[0]?.path, '/layers');
+  assert.match(result.errors[0].message, new RegExp(String(WORKLOAD_LIMITS.commands)));
+});
+
+test('material refs and JSON errors are surfaced without mutation, not silently repaired', () => {
+  const score = document();
+  const snapshot = JSON.stringify(score);
+  score.layers[0].commands[0].material = 'not-defined';
+  const first = validatePainting(score), second = validatePainting(score);
+  assert.deepEqual(first, second);
+  assert.equal(first.errors[0].path, '/layers/0/commands/0/material');
+  assert.equal(JSON.stringify(score).includes('not-defined'), true);
+  assert.notEqual(JSON.stringify(score), snapshot);
+  const malformed = document();
+  malformed.layers[0].commands[0].path = Array.from({length: 50}, () => [3,3,-1]);
+  const errors = validatePainting(malformed).errors;
+  assert.ok(errors.length > 0 && errors.length <= 40, 'schema errors must be bounded');
+});
+
+test('the published npm tarball includes the actual llms.txt asset', () => {
+  const result = JSON.parse(execFileSync('npm', ['pack', '--dry-run', '--json'], { cwd: root, encoding: 'utf8', stdio: ['ignore','pipe','pipe'] }));
+  const names = result[0].files.map(file => file.path);
+  assert.ok(names.includes('llms.txt'), `missing from pack: ${names.join(', ')}`);
+  assert.match(readFileSync(new URL('../llms.txt', import.meta.url),'utf8'), /JSON v1\.0/);
 });
