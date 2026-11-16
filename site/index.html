@@ -52,7 +52,7 @@ const score = {
 };
 const result = validatePainting(score);
 if (!result.valid) throw new Error(JSON.stringify(result.errors));
-const canvas = document.querySelector('canvas');
+const canvas = document.querySelector('canvas')!;
 const painter = new Painter(canvas);
 await painter.render(score);
 </code></pre></div><div class="code-card"><div class="code-header"><span>AGENT INPUT / DATA ONLY</span><button type="button" data-copy="agent-example">Copy prompt</button></div><pre><code id="agent-example">Return exactly one JSON painting score, no Markdown or JavaScript.
