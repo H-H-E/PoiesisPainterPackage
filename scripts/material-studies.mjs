@@ -54,7 +54,7 @@ const plans=[
  {id:'water-dry',description:'Same mask, color, pressure and seed; zero wetness',params:{paper:{texture:.9,absorbency:.42},seed:127,medium:dry,steps:48}},
  {id:'wet-cross',description:'Two intersecting still-wet watercolor passages',params:{paper:{texture:.85,absorbency:.25},seed:127,first:wet,second:crossing,between:6,after:44}},
  {id:'dry-cross',description:'Identical crossing gestures but the lower passage is explicitly dried',params:{paper:{texture:.85,absorbency:.25},seed:127,first:wet,second:crossing,between:6,after:44,dryBetween:true}},
- {id:'oil-depletion',description:'Orange oil crossing a blue wet underpaint in sequential loaded-to-depleted short chunks',params:{paper:{texture:.65,absorbency:.4},seed:127,medium:oil,capacity:28,chunks:15}},
+ {id:'oil-depletion',description:'Orange oil crossing a blue wet underpaint in sequential loaded-to-depleted short chunks',params:{paper:{texture:.65,absorbency:.4},seed:127,medium:oil,capacity:950,chunks:15}},
  {id:'knife-relief',description:'Same short chunks as oil-depletion, using a knife height field',params:{paper:{texture:.65,absorbency:.4},seed:127,medium:knife,capacity:28,chunks:15}},
 ];
 function runField(impl,plan){
@@ -74,7 +74,7 @@ function runField(impl,plan){
   // Same source underpainting and mask trajectory for oil and palette knife.
   const blue={...plan.params.medium,color:'#325b86',wetness:1,load:.85};
   s.deposit(mask(86,38,2),region(16,70,86,38),blue);
-  reservoir=reservoirFactory(plan.params.medium);reservoir.capacity=28;reservoir.remaining=28;
+  reservoir=reservoirFactory(plan.params.medium);reservoir.capacity=950;reservoir.remaining=950;
   budgetStart=s.stats().pigmentMass+reservoir.remaining;
   for(let k=0;k<15;k++){
    const x=18+k*13;
