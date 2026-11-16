@@ -233,3 +233,23 @@ test('the published npm tarball includes the actual llms.txt asset', () => {
   assert.ok(names.includes('llms.txt'), `missing from pack: ${names.join(', ')}`);
   assert.match(readFileSync(new URL('../llms.txt', import.meta.url),'utf8'), /JSON v1\.0/);
 });
+
+test('checked-in generated artifacts remain unchanged after npm run generate', () => {
+  execFileSync('git', ['diff', '--exit-code', '--', 'src/types.generated.ts', 'src/validator.generated.ts'], { cwd: root, stdio: 'pipe' });
+});
+
+test('full small-agent setup and command byte accounting is reproducible', () => {
+  const setup = readFileSync(new URL('../llms.txt', import.meta.url), 'utf8');
+  const prompt = readFileSync(new URL('../examples/agent-challenge-prompt.txt', import.meta.url), 'utf8');
+  const response = readFileSync(new URL('../examples/agent-challenge.json', import.meta.url), 'utf8');
+  const totalBytes = Buffer.byteLength(setup) + 1 + Buffer.byteLength(prompt);
+  const totalChars = setup.length + 1 + prompt.length;
+  const exampleBytes = totalBytes + 1 + Buffer.byteLength(response);
+  const exampleChars = totalChars + 1 + response.length;
+  assert.equal(totalBytes, 3334);
+  assert.equal(totalChars, 3332);
+  assert.equal(exampleBytes, 4189);
+  assert.equal(exampleChars, 4187);
+  assert.ok(guide.includes(`${totalBytes} UTF-8 bytes / ${totalChars} characters`));
+  assert.ok(guide.includes(`${exampleBytes} UTF-8 bytes / ${exampleChars} characters`));
+});
