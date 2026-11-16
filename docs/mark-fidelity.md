@@ -5,7 +5,8 @@ Scope: src/rasterizer.ts, src/geometry.ts, tests/geometry.test.mjs, tests/raster
 ## Implementation
 
 - **Common physical arc-length phase.** Previously, contact runs were decided at Sample.t values supplied by the path sampler. Removing or inserting samples could change where dry bristles touched and create one-sample paint fragments. A shared centerline trace now advances on an absolute ~1.25-native-pixel grid (at most 16,385 samples). Continuous bands and contact gates are evaluated at this trace; noise is keyed to absolute Sample.distance and the seed. Chunked oil/knife paths retain the distance origin provided by painter.ts.
-- **Bristle bundles, not stamps.** Every hair follows a connected swept polygon. Groups of four share a slow transverse drift; individual hairs add smaller drift, with no random draws during vertex traversal. Dry graphite, low-load brushes, and oil strands use correlated contact strength instead of random sample-by-sample omissions. Runs shorter than 1.25 native pixels are omitted to avoid isolated dabs.
+- **Pressure extrema and subpixel contact.** The trace merges exact pressure turning points into the regular grid, including both sides of a pressure plateau. The grid density is reduced as necessary so the merged trace stays within 16,385 samples. For a complete gesture shorter than 1.25px, the strongest pressure deposits one localized contact dab instead of a zero-area ribbon. Isolated short pressure pulses within longer gestures get a tapered contact even for dry bristles.
+- **Bristle bundles, not stamps.** Every hair follows a connected swept polygon. Groups of four share a slow transverse drift; individual hairs add smaller drift, with no random draws during vertex traversal. Dry graphite, low-load brushes, and oil strands use correlated contact strength instead of random sample-by-sample omissions. Random dry-contact runs shorter than 1.25 native pixels remain suppressed; explicit isolated pressure pulses retain tapered contact.
 - **Pressure, ends, and bends.** Hair footprints shrink with pressure; zero pressure yields no mask. Connected ribbons use quadratic round tips at their true endpoints. A genuinely stationary touch is a single dab. The centripetal Catmull–Rom sampler increases bounded subdivision around turns, uses a one-sided tangent when opposing tangents cancel, and rejects nonfinite/empty geometry before allocating Canvas buffers. Polygon filling and family/hatch algorithms retain their existing behavior.
 - **Bounded work.** The extra trace is shared by all bristles and capped at 16,385 samples; bristles are capped at 128. No per-bristle vertex arrays or full-page intermediate buffers. The Rasterizer.stroke(samples, material, command, width, height, seed, widthScale) signature remains unchanged.
 
@@ -34,12 +35,16 @@ A separate controlled mask study was executed against main baseline 8665223329ee
 | Measured native-mask statistic | Baseline | Revised |
 | --- | ---: | ---: |
 | 900×790 pixels in diagnostic contact sheet | Actual Canvas2D | Actual Canvas2D |
-| Pixels different between images | — | 55,990 / 711,000 (7.88%) |
-| Loaded ink pixels lighter than paper by >10 in R and G channels | 5,603 | 5,215 |
+| Pixels different between images | — | 55,991 / 711,000 (7.88%) |
+| Loaded ink pixels lighter than paper by >10 in R and G channels | 5,603 | 5,216 |
 | Loaded graphite pixels meeting same threshold | 3,473 | 3,799 |
-| Dry ink pixels meeting same threshold | 312 | 215 |
+| Dry ink pixels meeting same threshold | 312 | 216 |
 
 The counts describe a mask diagnostic, not opacity, pigment mass, realism, user preference, or performance. Visual inspection found coherent loaded bodies with greater strand separation around bends; dry strokes show intermittent, grouped longitudinal traces rather than a solid uniform band. A straight 184-pixel stroke produced exactly identical masks with 2, 9 and 185 input samples in Chromium. Uniform pressures of 0.2, 0.5 and 0.9 produced strictly increasing total alpha coverage. The committed Node regression tests repeat these properties with @napi-rs/canvas, including off-page bounds, tiny strokes, NaNs, and repeatability.
+
+### Review regression: subpixel pressure impulse
+
+Review [discussion #4581730526](https://github.com/H-H-E/PoiesisPainterPackage/pull/9#discussion_r4581730526) identified that the first fixed-grid candidate discarded \`[0,1,0]\` pressure over 0.24px, yielding 0 mask alpha. Against that exact source commit, a real Chromium Canvas2D reproduction confirmed alpha=0. After retaining pressure extrema, the same three-control-point, 240×160, loaded-marker case yields 44,228 total 8-bit alpha (nonzero native pixels); an entirely stationary \`[0,1,0]\` pulse yields 44,242. A localized peak in a much longer zero-pressure path also produces nonzero contact; a narrow pressure trough changes the rendered mask. These diagnostics are platform-specific measurements, not cross-backend golden hashes. New tests also exercise dry graphite/oil, identical rerenders, all-zero no-ops and the maximum 16,385-sample input.
 
 ## Still approximate and follow-ups
 

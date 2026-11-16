@@ -15,25 +15,59 @@ export interface RasterMask { data: Uint8ClampedArray; region: Bounds }
 function strokeTrace(samples: readonly Sample[]): Sample[] {
   const first = samples[0], last = samples[samples.length - 1];
   const length = last.distance - first.distance;
-  if (!(length > 1e-8)) return [first, last];
-  const step = Math.max(1.25, length / 16382);
+  if (!(length > 1e-8)) {
+    // A stationary press can change pressure without moving. Preserve contact.
+    let strongest = first;
+    for (const sample of samples) if (sample.pressure > strongest.pressure) strongest = sample;
+    return [strongest, strongest];
+  }
+
+  // A subpixel pressure peak can sit entirely between two grid points. Keep
+  // pressure turning points (including both sides of a plateau) as exact knots;
+  // otherwise a 0 -> 1 -> 0 press may turn into an all-zero trace. Only these
+  // features interrupt the uniform physical grid, so adding redundant constant-
+  // pressure samples never changes its phase or resulting pixels.
+  const extrema: Sample[] = [];
+  for (let i = 1; i < samples.length - 1; i++) {
+    const before = samples[i - 1].pressure, current = samples[i].pressure, after = samples[i + 1].pressure;
+    if ((current > before && current >= after) || (current >= before && current > after) ||
+        (current < before && current <= after) || (current <= before && current < after)) {
+      extrema.push(samples[i]);
+    }
+  }
+
+  // Reserve space for every input pressure extremum and both endpoints. With
+  // at most 16,385 incoming samples, this also bounds the merged trace to 16,385.
+  const gridBudget = 16383 - extrema.length;
+  const step = gridBudget > 0 ? Math.max(1.25, length / gridBudget) : Infinity;
   const path: Sample[] = [first];
   let index = 1;
-  // The phase is in absolute gesture coordinates, not local chunk coordinates.
-  for (let d = (Math.floor(first.distance / step) + 1) * step; d < last.distance - 1e-7; d += step) {
-    while (index < samples.length - 1 && samples[index].distance < d) index++;
-    const a = samples[index - 1], b = samples[index];
-    const delta = b.distance - a.distance;
-    if (delta < 1e-8) continue;
-    const fraction = clamp((d - a.distance) / delta);
-    const x = a.x + (b.x - a.x) * fraction, y = a.y + (b.y - a.y) * fraction;
-    let nx = a.nx + (b.nx - a.nx) * fraction, ny = a.ny + (b.ny - a.ny) * fraction;
-    const magnitude = Math.hypot(nx, ny);
-    if (magnitude < 1e-7) { nx = a.nx; ny = a.ny; }
-    else { nx /= magnitude; ny /= magnitude; }
-    path.push({ x, y, nx, ny, distance: d,
-      t: a.t + (b.t - a.t) * fraction,
-      pressure: a.pressure + (b.pressure - a.pressure) * fraction });
+  let nextGrid = Number.isFinite(step) ? (Math.floor(first.distance / step) + 1) * step : Infinity;
+  // Merge extrema into the distance-sorted grid, preferring exact input knots
+  // when a regular grid point coincides with a pressure feature.
+  for (let i = 0; i <= extrema.length; i++) {
+    const critical = i < extrema.length ? extrema[i] : last;
+    while (nextGrid < critical.distance - 1e-7 && nextGrid < last.distance - 1e-7) {
+      while (index < samples.length - 1 && samples[index].distance < nextGrid) index++;
+      const a = samples[index - 1], b = samples[index];
+      const delta = b.distance - a.distance;
+      if (delta >= 1e-8) {
+        const fraction = clamp((nextGrid - a.distance) / delta);
+        const x = a.x + (b.x - a.x) * fraction, y = a.y + (b.y - a.y) * fraction;
+        let nx = a.nx + (b.nx - a.nx) * fraction, ny = a.ny + (b.ny - a.ny) * fraction;
+        const magnitude = Math.hypot(nx, ny);
+        if (magnitude < 1e-7) { nx = a.nx; ny = a.ny; }
+        else { nx /= magnitude; ny /= magnitude; }
+        path.push({ x, y, nx, ny, distance: nextGrid,
+          t: a.t + (b.t - a.t) * fraction,
+          pressure: a.pressure + (b.pressure - a.pressure) * fraction });
+      }
+      nextGrid += step;
+    }
+    if (i < extrema.length) {
+      path.push(critical);
+      if (Math.abs(nextGrid - critical.distance) <= 1e-7) nextGrid += step;
+    }
   }
   path.push(last);
   return path;
@@ -137,10 +171,14 @@ export class Rasterizer {
       context.closePath(); context.fill();
     };
 
-    // A single stationary contact is one dab, not a chain of repeated stamps.
-    if (path.at(-1)!.distance - path[0].distance < 1e-8) {
-      const s = path[0], r = radius(s);
-      if (r > 0) { context.globalAlpha = dry ? .25 : .75 * (.5 + .5 * load); context.beginPath(); context.arc(s.x, s.y, r, 0, Math.PI * 2); context.fill(); }
+    // Subpixel presses are contact dabs, not zero-area ribbons. Choose peak
+    // pressure even if both gesture endpoints are zero; do this once per tiny
+    // gesture, never once per path sample or bristle.
+    if (path.at(-1)!.distance - path[0].distance < 1.25) {
+      let strongest = path[0];
+      for (const sample of path) if (sample.pressure > strongest.pressure) strongest = sample;
+      const r = radius(strongest);
+      if (r > 0) { context.globalAlpha = dry ? .25 : .75 * (.5 + .5 * load); context.beginPath(); context.arc(strongest.x, strongest.y, r, 0, Math.PI * 2); context.fill(); }
       return this.finish(context, region);
     }
 
@@ -163,8 +201,15 @@ export class Rasterizer {
           if (touches && begin < 0) begin = k;
           if ((!touches || k === path.length - 1) && begin >= 0) {
             const end = touches ? k : k - 1;
-            // Ignore isolated <~2px contact noise (would resemble ellipse stamping).
-            if (path[end].distance - path[begin].distance >= 1.25) band(begin, end, offset, thickness, localSeed, groupSeed, true);
+            // Ignore isolated contact-noise dots on otherwise active dry lanes.
+            // A *pressure* pulse bounded by zero pressure is different: retain
+            // its tapered contact, even when the whole pulse is subpixel.
+            if (path[end].distance - path[begin].distance >= 1.25) {
+              band(begin, end, offset, thickness, localSeed, groupSeed, true);
+            } else if ((begin === 0 || path[begin - 1].pressure <= .002) &&
+                       (end === path.length - 1 || path[end + 1].pressure <= .002)) {
+              band(Math.max(0, begin - 1), Math.min(path.length - 1, end + 1), offset, thickness, localSeed, groupSeed, true);
+            }
             begin = -1;
           }
         }

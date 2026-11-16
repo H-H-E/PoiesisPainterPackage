@@ -136,3 +136,76 @@ test('mark-study fixture generator emits native PNGs and nearest-neighbor crops'
   }
   assert.ok((await stat(target + '/contact-sheet-native.png')).size > 5000);
 });
+
+test('subpixel zero-to-full-to-zero pressure peak leaves a real deterministic mark', () => {
+  // Reviewer regression: this entire 0.24px gesture falls between 1.25px grid nodes.
+  const gesture = [[.5, .5, 0], [.5005, .5, 1], [.501, .5, 0]];
+  const samples = samplePath(gesture, WIDTH, HEIGHT, 12);
+  assert.deepEqual(samples.map(s => s.pressure), [0, 1, 0]);
+  assert.ok(samples.at(-1).distance < 1.25);
+  const r = raster();
+  try {
+    for (const medium of ['marker', 'graphite', 'oil']) {
+      const pigment = { ...material, medium, load: medium === 'graphite' ? .18 : .95 };
+      const mark = r.stroke(samples, pigment, command, WIDTH, HEIGHT, 12);
+      assertInside(mark);
+      assert.ok(alpha(mark) > 0, medium + ' lost all intermediate pressure contact');
+      assert.deepEqual(r.stroke(samples, pigment, command, WIDTH, HEIGHT, 12), mark);
+      const zero = samples.map(s => ({ ...s, pressure: 0 }));
+      assert.equal(r.stroke(zero, pigment, command, WIDTH, HEIGHT, 12), null);
+    }
+  } finally { r.dispose(); }
+});
+
+test('stationary pressure pulses retain their peak instead of zero-pressure endpoints', () => {
+  const r = raster();
+  try {
+    const gesture = [[.5, .5, 0], [.5, .5, 1], [.5, .5, 0]];
+    const mask = r.stroke(samplePath(gesture, WIDTH, HEIGHT, 12),
+      { ...material, medium: 'marker' }, command, WIDTH, HEIGHT, 12);
+    assertInside(mask);
+    assert.ok(alpha(mask) > 0);
+  } finally { r.dispose(); }
+});
+
+test('interior pressure spikes and dips survive resampling without painting distant zero-pressure spans', () => {
+  const r = raster();
+  try {
+    const ink = { ...material, medium: 'marker', load: .95 };
+    const pulse = [[.1, .5, 0], [.5, .5, 0], [.5005, .5, 1], [.501, .5, 0], [.9, .5, 0]];
+    const pulseMask = r.stroke(samplePath(pulse, WIDTH, HEIGHT, 12), ink, command, WIDTH, HEIGHT, 12);
+    assertInside(pulseMask);
+    assert.ok(alpha(pulseMask) > 0, 'subpixel pressure contact vanished inside a long stroke');
+    let painted = 0;
+    for (let y = 0; y < pulseMask.region.height; y++) for (let x = 0; x < pulseMask.region.width; x++) {
+      if (pulseMask.data[(y * pulseMask.region.width + x) * 4 + 3] === 0) continue;
+      painted++;
+      assert.ok(Math.abs(x + pulseMask.region.x - 120) < 15, 'paint escaped isolated peak');
+    }
+    assert.ok(painted > 0);
+
+    const constant = [[.1, .5, .9], [.9, .5, .9]];
+    const notch = [[.1, .5, .9], [.5, .5, .9], [.5005, .5, 0], [.501, .5, .9], [.9, .5, .9]];
+    const full = r.stroke(samplePath(constant, WIDTH, HEIGHT, 12), ink, command, WIDTH, HEIGHT, 12);
+    const lowered = r.stroke(samplePath(notch, WIDTH, HEIGHT, 12), ink, command, WIDTH, HEIGHT, 12);
+    assertInside(full);
+    assertInside(lowered);
+    assert.deepEqual(lowered.region, full.region);
+    assert.ok(alpha(lowered) < alpha(full), 'subpixel pressure trough was discarded');
+  } finally { r.dispose(); }
+});
+
+test('alternating pressure extrema at the maximum accepted sample count remain bounded', () => {
+  const r = raster();
+  try {
+    const n = 16385;
+    const samples = Array.from({ length: n }, (_, i) => {
+      const t = i / (n - 1);
+      return { x: 18 + 184 * t, y: 80, pressure: i % 2 ? 1 : 0, nx: 0, ny: 1, t, distance: 184 * t };
+    });
+    const mark = r.stroke(samples, { ...material, medium: 'marker', size: .02, bristles: 2 },
+      command, WIDTH, HEIGHT, 12);
+    assertInside(mark);
+    assert.ok(alpha(mark) > 0);
+  } finally { r.dispose(); }
+});
