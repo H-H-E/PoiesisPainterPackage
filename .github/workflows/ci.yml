@@ -21,6 +21,10 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run check
+      - name: Verify benchmark fixture invariants and statistics
+        run: node --test benchmarks/*.test.mjs
+      - name: Run bounded native Canvas2D benchmark smoke
+        run: npm run benchmark -- --smoke --out evidence/benchmarks/smoke.json
       - name: Install dedicated headless browser
         run: npx playwright install --with-deps chromium
       - name: Verify actual browser pixels and studio workflows
@@ -33,6 +37,7 @@ jobs:
         with:
           name: painting-verification-${{ github.sha }}
           path: |
+            evidence/benchmarks/
             evidence/browser/
             evidence/renders/
             dist/bundle-size.json
