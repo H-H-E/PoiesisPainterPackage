@@ -1,0 +1,459 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://poiesis.education/schemas/painting-1.0.json",
+  "title": "PaintingDocument",
+  "description": "A deterministic, bounded, data-only painting display list. Coordinates and widths are normalized; time advances only through explicit wait commands.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "version",
+    "width",
+    "height",
+    "seed",
+    "background",
+    "materials",
+    "layers"
+  ],
+  "properties": {
+    "version": {
+      "const": "1.0"
+    },
+    "width": {
+      "type": "integer",
+      "minimum": 16,
+      "maximum": 8192
+    },
+    "height": {
+      "type": "integer",
+      "minimum": 16,
+      "maximum": 8192
+    },
+    "seed": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 4294967295
+    },
+    "background": {
+      "$ref": "#/definitions/Color"
+    },
+    "paper": {
+      "$ref": "#/definitions/Paper"
+    },
+    "materials": {
+      "type": "object",
+      "minProperties": 1,
+      "maxProperties": 128,
+      "propertyNames": {
+        "allOf": [
+          {
+            "$ref": "#/definitions/Id"
+          },
+          {
+            "not": {
+              "enum": [
+                "__proto__",
+                "prototype",
+                "constructor"
+              ]
+            }
+          }
+        ]
+      },
+      "additionalProperties": {
+        "$ref": "#/definitions/Material"
+      }
+    },
+    "layers": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 32,
+      "items": {
+        "$ref": "#/definitions/Layer"
+      }
+    }
+  },
+  "definitions": {
+    "Id": {
+      "type": "string",
+      "pattern": "^[A-Za-z][A-Za-z0-9_.:-]{0,63}$",
+      "description": "Stable ASCII ID, at most 64 characters; reserved prototype names are rejected."
+    },
+    "Color": {
+      "type": "string",
+      "pattern": "^#[0-9a-fA-F]{6}$",
+      "description": "Opaque sRGB pigment color; transparency is controlled separately."
+    },
+    "Unit": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1
+    },
+    "Point": {
+      "type": "array",
+      "minItems": 2,
+      "maxItems": 2,
+      "additionalItems": false,
+      "items": [
+        {
+          "type": "number",
+          "minimum": -1,
+          "maximum": 2
+        },
+        {
+          "type": "number",
+          "minimum": -1,
+          "maximum": 2
+        }
+      ]
+    },
+    "GesturePoint": {
+      "description": "Normalized x, y and optional pressure; default pressure is 1.",
+      "type": "array",
+      "minItems": 2,
+      "maxItems": 3,
+      "additionalItems": false,
+      "items": [
+        {
+          "type": "number",
+          "minimum": -1,
+          "maximum": 2
+        },
+        {
+          "type": "number",
+          "minimum": -1,
+          "maximum": 2
+        },
+        {
+          "$ref": "#/definitions/Unit"
+        }
+      ]
+    },
+    "Path": {
+      "type": "array",
+      "minItems": 2,
+      "maxItems": 4096,
+      "items": {
+        "$ref": "#/definitions/GesturePoint"
+      }
+    },
+    "Polygon": {
+      "type": "array",
+      "minItems": 3,
+      "maxItems": 2048,
+      "items": {
+        "$ref": "#/definitions/Point"
+      }
+    },
+    "Paper": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "texture": {
+          "$ref": "#/definitions/Unit"
+        },
+        "absorbency": {
+          "$ref": "#/definitions/Unit"
+        }
+      }
+    },
+    "Material": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "medium",
+        "color",
+        "size"
+      ],
+      "properties": {
+        "medium": {
+          "enum": [
+            "ink",
+            "watercolor",
+            "oil",
+            "graphite",
+            "marker",
+            "knife"
+          ]
+        },
+        "color": {
+          "$ref": "#/definitions/Color"
+        },
+        "size": {
+          "type": "number",
+          "minimum": 0.0001,
+          "maximum": 0.5,
+          "description": "Brush width as a fraction of the shorter surface dimension."
+        },
+        "opacity": {
+          "$ref": "#/definitions/Unit"
+        },
+        "load": {
+          "$ref": "#/definitions/Unit"
+        },
+        "wetness": {
+          "$ref": "#/definitions/Unit"
+        },
+        "roughness": {
+          "$ref": "#/definitions/Unit"
+        },
+        "bristles": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 128
+        },
+        "granulation": {
+          "$ref": "#/definitions/Unit"
+        },
+        "viscosity": {
+          "$ref": "#/definitions/Unit"
+        }
+      }
+    },
+    "Intent": {
+      "description": "Composable mark character; inspect resolved parameters to see the translation.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "force": {
+          "$ref": "#/definitions/Unit"
+        },
+        "hesitation": {
+          "$ref": "#/definitions/Unit"
+        },
+        "restraint": {
+          "$ref": "#/definitions/Unit"
+        }
+      }
+    },
+    "StrokeCommand": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "op",
+        "material",
+        "path"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/definitions/Id"
+        },
+        "op": {
+          "const": "stroke"
+        },
+        "material": {
+          "$ref": "#/definitions/Id"
+        },
+        "path": {
+          "$ref": "#/definitions/Path"
+        },
+        "intent": {
+          "$ref": "#/definitions/Intent"
+        },
+        "tilt": {
+          "$ref": "#/definitions/Unit"
+        },
+        "rotation": {
+          "type": "number",
+          "minimum": -360,
+          "maximum": 360
+        },
+        "speed": {
+          "type": "number",
+          "minimum": 0.01,
+          "maximum": 10
+        }
+      }
+    },
+    "FillCommand": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "op",
+        "material",
+        "polygon"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/definitions/Id"
+        },
+        "op": {
+          "const": "fill"
+        },
+        "material": {
+          "$ref": "#/definitions/Id"
+        },
+        "polygon": {
+          "$ref": "#/definitions/Polygon"
+        }
+      }
+    },
+    "HatchCommand": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "op",
+        "material",
+        "polygon",
+        "spacing",
+        "angle"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/definitions/Id"
+        },
+        "op": {
+          "const": "hatch"
+        },
+        "material": {
+          "$ref": "#/definitions/Id"
+        },
+        "polygon": {
+          "$ref": "#/definitions/Polygon"
+        },
+        "spacing": {
+          "type": "number",
+          "minimum": 0.001,
+          "maximum": 0.2
+        },
+        "angle": {
+          "type": "number",
+          "minimum": -360,
+          "maximum": 360
+        }
+      }
+    },
+    "FamilyCommand": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "op",
+        "material",
+        "path",
+        "count",
+        "spread",
+        "jitter"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/definitions/Id"
+        },
+        "op": {
+          "const": "family"
+        },
+        "material": {
+          "$ref": "#/definitions/Id"
+        },
+        "path": {
+          "$ref": "#/definitions/Path"
+        },
+        "count": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 2000
+        },
+        "spread": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 2,
+          "additionalItems": false,
+          "items": [
+            {
+              "type": "number",
+              "minimum": -2,
+              "maximum": 2
+            },
+            {
+              "type": "number",
+              "minimum": -2,
+              "maximum": 2
+            }
+          ]
+        },
+        "jitter": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 0.5
+        },
+        "intent": {
+          "$ref": "#/definitions/Intent"
+        }
+      }
+    },
+    "WaitCommand": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "op",
+        "steps"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/definitions/Id"
+        },
+        "op": {
+          "const": "wait"
+        },
+        "steps": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 200
+        }
+      }
+    },
+    "Command": {
+      "oneOf": [
+        {
+          "$ref": "#/definitions/StrokeCommand"
+        },
+        {
+          "$ref": "#/definitions/FillCommand"
+        },
+        {
+          "$ref": "#/definitions/HatchCommand"
+        },
+        {
+          "$ref": "#/definitions/FamilyCommand"
+        },
+        {
+          "$ref": "#/definitions/WaitCommand"
+        }
+      ],
+      "type": "object"
+    },
+    "Layer": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "commands"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/definitions/Id"
+        },
+        "opacity": {
+          "$ref": "#/definitions/Unit"
+        },
+        "blend": {
+          "enum": [
+            "normal",
+            "multiply",
+            "screen"
+          ]
+        },
+        "commands": {
+          "type": "array",
+          "maxItems": 10000,
+          "items": {
+            "$ref": "#/definitions/Command"
+          }
+        }
+      }
+    }
+  }
+}

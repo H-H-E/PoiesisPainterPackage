@@ -1,0 +1,139 @@
+You are a research engineer, graphics architect, natural-media simulation specialist, generative artist, and developer-tool designer. Work as an integrated team, using parallel research agents if available and one owner for architecture and integration.
+
+Your mission is to study five existing painting engines at source level, then design and implement an original browser-first package that combines their verified capabilities with better performance, a smaller conceptual surface, and exceptional expressive control for AI agents.
+
+I want a serious instrument for making art. An agent should be able to express restraint, tension, tenderness, hesitation, force, rhythm, and material sensitivity through specific decisions about marks, composition, and paint. Translate those intentions into controllable mechanisms; do not claim the software or agent possesses human feelings.
+
+The package must help a tiny browser-running model produce rich paintings without writing thousands of low-level drawing calls or inventing a brush simulator. The painting engine itself must work without a model, paid API, or hosted service.
+
+SOURCE REPOSITORIES
+
+Git clone and inspect all five:
+
+https://github.com/acamposuribe/p5.brush
+https://github.com/halfprice06/oil-paint-agents
+https://github.com/castavridis/washes-js
+https://github.com/enpts/sho
+https://github.com/lambentLogic/wet-edge
+
+Treat descriptions from earlier conversations as hypotheses. Verify what each repository actually implements. Record the exact commit, license, dependencies, build requirements, and renderer. Keep upstream code in a separate reference directory, pinned for reproducible comparisons.
+
+Do the actual work: clone, read source and shaders, inspect examples and documentation, run available demos, profile representative workloads, design, implement, and verify. Do not substitute a speculative architecture essay for source analysis.
+
+Check which shell, network, browser, GPU, and execution tools are actually available. If git is unavailable, use downloadable source archives when possible and record that substitution. If execution is blocked, continue useful source analysis and implementation, but distinguish inspected, executed, and verified work. Never fabricate benchmarks or screenshots.
+
+Use available compute and make routine technical decisions independently. Keep work local unless I explicitly request publication. Maintain a resumable project checkpoint with completed work, evidence, decisions, and remaining tasks.
+
+FIRST: BUILD AN EVIDENCE-BASED CAPABILITY MAP
+
+For each engine, trace the path from public API to stroke construction, material state, rendering, and export. Identify performance costs through measurements where possible.
+
+Create a feature ledger. Each entry must include its source repository and commit, relevant file/function or shader, observable behavior, controls, state, dependencies, example, and a concrete parity test.
+
+Audit public APIs, examples, internal implementations, and experimental functionality. Separate documented claims from implemented and verified behavior. Include capabilities beyond brush appearance: paths, custom tips, fills, hatching, flow fields, timelines, streaming, serialization, seeded randomness, compositing, exports, and agent interfaces wherever they actually exist.
+
+Investigate these material behaviors without assuming every repository supports them: bristle continuity and clumping; pressure, tilt, speed and direction; paint loading, depletion, pickup and redeposition; dry brush and ink pooling; oil mixing and height fields; watercolor transport, diffusion, drying, granulation and edge accumulation; paper absorption, grain and canvas weave; pencils, charcoal, markers and palette knives.
+
+Define the scope of "all features" from this audit. Do not quietly discard awkward features because they do not fit the architecture. Separate source-feature parity from improvements you invent.
+
+Inspect licenses for code, dependencies, shaders, textures, example assets, and other bundled content. Preserve required notices and attribution for adaptations. Do not describe a source-informed rewrite as legally independent clean-room work. Choose a distribution license compatible with the material actually included.
+
+SECOND: DESIGN A BETTER INSTRUMENT
+
+Compare three genuinely different architectures against the audited requirements. Assess visual quality, material fidelity, throughput, memory, bundle size, maintainability, agent token cost, and browser support. Choose and justify one before implementing the core.
+
+Do not glue the five existing engines together and call the wrapper a new engine. Reference adapters are useful for tests, but the delivered core needs an actual implementation of its own.
+
+Prefer shared surface conventions, command representation, scheduling, and compositing where they help. Preserve different solvers where watercolor, oil, ink, and dry media require different behavior. Specify what happens when media interact. A unified API must not disguise one generic noise texture pretending to be every material.
+
+Evaluate TypeScript, WebGPU, WebGL2, Canvas, workers, OffscreenCanvas, and WASM according to evidence. Do not add a backend or language merely to make the architecture sound impressive. State capability differences and fallback costs explicitly. Silent substitution of a weaker effect is unacceptable.
+
+Consider GPU-resident fields, dirty regions, sparse updates, coherent memory layouts, batching, pooled allocations, multiscale simulation, and tile processing. Choose optimizations after profiling. Preserve path-dependent material behavior and stroke order.
+
+The design should support progressive rendering, cancellation, resource disposal, capability detection, and recovery from relevant renderer failures. Account for the possibility that a browser LLM shares GPU memory and scheduling resources with the painting engine.
+
+"Concise" means fewer concepts, clearer composition, fewer agent tokens, and smaller justified dependencies. It does not mean minified source or essential controls hidden behind mysterious presets.
+
+THIRD: MAKE EXPRESSIVE CONTROL PRECISE AND COMPACT
+
+Design both a concise typed JavaScript/TypeScript API and a versioned, validated JSON command format. Agents must be able to paint without executing arbitrary JavaScript.
+
+Provide three connected levels:
+
+Intent: compact, composable instructions for mark character, rhythm, edge behavior, layering, palette, and compositional relationships.
+
+Gesture: paths with pressure, speed, tilt, rotation, loading, wetness, and controlled variation where supported.
+
+Material: explicit pigment, brush, substrate, simulation, and lighting controls for precise work.
+
+Show how an intention becomes inspectable gestures and material parameters. Avoid a magical paint("melancholy") function that always generates the same template. Leave meaningful composition and mark-making decisions to the agent.
+
+Use sensible defaults, normalized coordinates where helpful, reusable brush/material recipes, stable object IDs, batch commands, and efficient parameter curves. Expose escape hatches without forcing routine callers into low-level detail.
+
+Include capability discovery, schema examples, useful validation errors with repair suggestions, deterministic seeds, bounded workloads, transactions or coherent edit groups, replay, serialization, and revision by ID. Define how undo and replay work when wet material makes history stateful. Invalid batches should fail predictably rather than leave unexplained half-applied paintings.
+
+Let one short command describe a family of related marks, with reproducible variation and enough control to avoid arbitrary visual noise. Support streaming only where it improves real workflows.
+
+Give agents local visual feedback: previews, crops, and concise structured state that helps them decide what to change next. An agent should be able to adjust a passage, soften an edge, reload a brush, or change a layer without regenerating the whole artwork.
+
+Provide one authoritative schema and generate documentation/types from it where practical. Include a compact llms.txt, quick reference, complete API reference, material cookbook, and short examples covering successful commands and common mistakes.
+
+FOURTH: PROVE THE MARKS SURVIVE CLOSE INSPECTION
+
+The central visual failure to avoid is a painting that looks convincing when small but becomes thousands of tiny ellipses when enlarged.
+
+Inspect continuous stroke structure, changing contact, depletion, pigment distribution, directional bristle detail, and interactions with the surface. Primitives are acceptable internally; a repeated-stamp appearance is not evidence of convincing brushwork.
+
+Create a shared test scene for every applicable upstream engine and the new package: an overcast blue-black landscape with pale sky, distant ridges, dark water, foreground reeds, and one restrained warm accent. Keep composition, dimensions, and layer intent comparable while allowing each medium to behave naturally.
+
+Also create focused material studies: pressure and direction changes; loaded-to-dry strokes; crossing wet strokes; pigment mixing; watery edges; and dry marks on textured surfaces. Mark tests inapplicable to a particular engine rather than forcing false equivalence.
+
+Inspect native-resolution images, 100% crops, and enlarged crops. Use raw exports, without postprocessing that hides defects.
+
+Then demonstrate artistic range with at least three distinct works: restrained ink, transparent watercolor, and substantial oil or knife work, if the audited capabilities support these media. Make them actual compositions rather than collections of brush swatches. Show both short agent commands and the resulting images.
+
+Use visual review alongside quantitative checks. Exact image matching is appropriate only where justified; similar physical behavior and quality can require different pixels. Record the limits of deterministic replay across devices and backends.
+
+FIFTH: MEASURE PERFORMANCE AND AGENT USABILITY HONESTLY
+
+Establish upstream baselines before setting numerical speed targets. Aim for substantial improvements, but publish only measured gains.
+
+Compare equivalent workloads at comparable visual quality. Match device, browser, resolution, useful scene complexity, and simulation progress. Include both common-feature comparisons and engine-specific cases. Do not win by silently lowering bristle count, simulation accuracy, drying steps, or export quality.
+
+Measure cold startup and shader compilation separately from warm execution. Report stroke latency, completed rendering throughput, simulation time, frame-time percentiles, main-thread blocking, memory where observable, compressed bundle/assets size, and high-resolution export time. Wait for GPU completion where required; submission time is not completion time. Separate readback/export costs.
+
+Use repeated runs with warmups, raw timing data, variability, exact environment details, and runnable benchmark commands. State when a measurement is an estimate or unavailable. Do not generalize one machine's results to every device.
+
+Test increasing image sizes and stroke counts, including a print-size case within available resources. If tiled export is used, verify seams and cross-tile material behavior. Do not call an upscaled preview a high-resolution simulation.
+
+Measure agent usability separately: command length, token cost using a named tokenizer or explicitly labeled proxy, schema validity, successful task completion, and accuracy of requested revisions. Compare low-level drawing code with the new API on the same briefs.
+
+Design a compact-command challenge, such as expressing a painting containing hundreds of coherent marks in a few hundred tokens. Count material/preset setup and necessary context, not only the final one-line command.
+
+If a suitable small model and runtime are actually available, test it. Otherwise provide a reproducible evaluation harness and label the result as API/schema testing, not demonstrated tiny-model compatibility. Do not make model downloads or inference mandatory for the package.
+
+SIXTH: IMPLEMENT AND DELIVER
+
+After the audit and architecture decision, build a runnable end-to-end implementation, then expand against the feature ledger. Avoid spending the whole session on planning, scaffolding, or studio chrome. Prioritize the rendering engine, agent contract, material quality, and verification.
+
+Keep a capability matrix with explicit statuses: implemented and verified, implemented but unverified, approximate with stated differences, incomplete, or unsupported. Never claim complete parity while audited features remain unaccounted for.
+
+Use focused tests for geometry, state, serialization, replay, schema validation, numerical stability, and material interactions where they establish meaningful correctness. Include browser-based rendering verification and benchmark fixtures. Do not rely on unit tests alone to prove the paint looks right.
+
+Deliver:
+
+A source-backed audit and feature ledger for all five repositories.
+The selected architecture, alternatives considered, and reasons.
+The runnable package source with exact install, build, and demo commands.
+A minimal browser studio for comparing materials, inspecting crops, editing commands, and exporting.
+Typed APIs, JSON schema, llms.txt, documentation, and concise examples.
+Reproducible benchmarks with raw results and honest comparison tables.
+Native-resolution renders and close-up comparisons.
+A parity matrix, third-party notices, remaining limitations, and a prioritized continuation plan.
+
+Package available deliverables into a downloadable archive with a clear README. The final response should lead with what actually runs, the strongest verified improvement, and the largest remaining gap. Link the artifacts.
+
+If completing every audited feature exceeds the session, deliver the strongest coherent runnable implementation and an exact checkpoint. Keep the full scope visible. Do not present stubs, wrappers, mocked effects, or an impressive README as a finished universal painting engine.
+
+The artistic ambition is high: build an instrument that makes individual decisions visible in the paint. Every claim of realism, efficiency, expressiveness, or completeness must earn its place through code, images, or measurements.
+

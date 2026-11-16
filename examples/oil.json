@@ -1,0 +1,487 @@
+{
+  "version": "1.0",
+  "width": 1152,
+  "height": 768,
+  "seed": 2701,
+  "background": "#bac0b4",
+  "paper": {
+    "texture": 0.36,
+    "absorbency": 0.6
+  },
+  "materials": {
+    "sky": {
+      "medium": "oil",
+      "color": "#a7b8b9",
+      "size": 0.16,
+      "load": 0.95,
+      "roughness": 0.4,
+      "bristles": 48,
+      "viscosity": 0.7
+    },
+    "pale": {
+      "medium": "knife",
+      "color": "#d6d4bc",
+      "size": 0.032,
+      "load": 0.85,
+      "roughness": 0.28,
+      "bristles": 18,
+      "viscosity": 0.86
+    },
+    "cloud": {
+      "medium": "oil",
+      "color": "#788e98",
+      "size": 0.06,
+      "load": 0.7,
+      "roughness": 0.5,
+      "bristles": 36,
+      "viscosity": 0.8
+    },
+    "ridge": {
+      "medium": "knife",
+      "color": "#314e5e",
+      "size": 0.085,
+      "load": 0.9,
+      "roughness": 0.4,
+      "viscosity": 0.8
+    },
+    "sea": {
+      "medium": "oil",
+      "color": "#163a48",
+      "size": 0.1,
+      "load": 0.95,
+      "roughness": 0.4,
+      "bristles": 48,
+      "viscosity": 0.7
+    },
+    "surf": {
+      "medium": "knife",
+      "color": "#77989c",
+      "size": 0.012,
+      "load": 0.65,
+      "roughness": 0.35,
+      "viscosity": 0.9
+    },
+    "deep": {
+      "medium": "oil",
+      "color": "#112a35",
+      "size": 0.02,
+      "load": 0.8,
+      "roughness": 0.6,
+      "bristles": 24
+    },
+    "rust": {
+      "medium": "knife",
+      "color": "#9d5b3c",
+      "size": 0.05,
+      "load": 0.9,
+      "roughness": 0.45,
+      "viscosity": 0.9
+    },
+    "light": {
+      "medium": "knife",
+      "color": "#c19b6a",
+      "size": 0.018,
+      "load": 0.9,
+      "roughness": 0.34,
+      "viscosity": 0.9
+    },
+    "rock": {
+      "medium": "oil",
+      "color": "#182c30",
+      "size": 0.075,
+      "load": 0.8,
+      "roughness": 0.55,
+      "bristles": 42
+    }
+  },
+  "layers": [
+    {
+      "id": "painted-sky",
+      "commands": [
+        {
+          "id": "sky-ground",
+          "op": "fill",
+          "material": "sky",
+          "polygon": [
+            [
+              0,
+              0
+            ],
+            [
+              1,
+              0
+            ],
+            [
+              1,
+              0.6
+            ],
+            [
+              0,
+              0.6
+            ]
+          ]
+        },
+        {
+          "id": "sky-scrapes",
+          "op": "family",
+          "material": "pale",
+          "path": [
+            [
+              -0.05,
+              0.07,
+              0.6
+            ],
+            [
+              0.35,
+              0.075,
+              0.9
+            ],
+            [
+              0.78,
+              0.05,
+              0.2
+            ]
+          ],
+          "count": 12,
+          "spread": [
+            0.2,
+            0.32
+          ],
+          "jitter": 0.06
+        },
+        {
+          "id": "cloud-weight",
+          "op": "stroke",
+          "material": "cloud",
+          "path": [
+            [
+              -0.05,
+              0.34,
+              0.6
+            ],
+            [
+              0.3,
+              0.32,
+              1
+            ],
+            [
+              0.6,
+              0.36,
+              0.1
+            ]
+          ]
+        },
+        {
+          "id": "ridge-ground",
+          "op": "fill",
+          "material": "ridge",
+          "polygon": [
+            [
+              0,
+              0.51
+            ],
+            [
+              0.11,
+              0.44
+            ],
+            [
+              0.22,
+              0.49
+            ],
+            [
+              0.34,
+              0.39
+            ],
+            [
+              0.52,
+              0.51
+            ],
+            [
+              0.66,
+              0.46
+            ],
+            [
+              0.82,
+              0.49
+            ],
+            [
+              1,
+              0.43
+            ],
+            [
+              1,
+              0.64
+            ],
+            [
+              0,
+              0.64
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "id": "worked-water",
+      "commands": [
+        {
+          "id": "sea-ground",
+          "op": "fill",
+          "material": "sea",
+          "polygon": [
+            [
+              0,
+              0.57
+            ],
+            [
+              1,
+              0.57
+            ],
+            [
+              1,
+              1
+            ],
+            [
+              0,
+              1
+            ]
+          ]
+        },
+        {
+          "id": "sea-knife-marks",
+          "op": "family",
+          "material": "surf",
+          "path": [
+            [
+              0.03,
+              0.62,
+              0.1
+            ],
+            [
+              0.24,
+              0.62,
+              0.8
+            ],
+            [
+              0.5,
+              0.61,
+              0.06
+            ]
+          ],
+          "count": 36,
+          "spread": [
+            0.26,
+            0.3
+          ],
+          "jitter": 0.08
+        },
+        {
+          "id": "deep-water-marks",
+          "op": "family",
+          "material": "deep",
+          "path": [
+            [
+              0.12,
+              0.68,
+              0.1
+            ],
+            [
+              0.36,
+              0.675,
+              0.8
+            ],
+            [
+              0.61,
+              0.68,
+              0.1
+            ]
+          ],
+          "count": 19,
+          "spread": [
+            0.2,
+            0.26
+          ],
+          "jitter": 0.06
+        },
+        {
+          "id": "single-bright-current",
+          "op": "stroke",
+          "material": "pale",
+          "path": [
+            [
+              0.12,
+              0.82,
+              0.03
+            ],
+            [
+              0.29,
+              0.81,
+              0.22
+            ],
+            [
+              0.49,
+              0.82,
+              0.03
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "id": "stone-headland",
+      "commands": [
+        {
+          "id": "right-rock-ground",
+          "op": "fill",
+          "material": "rock",
+          "polygon": [
+            [
+              0.72,
+              0.73
+            ],
+            [
+              0.79,
+              0.62
+            ],
+            [
+              0.9,
+              0.61
+            ],
+            [
+              1,
+              0.55
+            ],
+            [
+              1,
+              1
+            ],
+            [
+              0.61,
+              1
+            ]
+          ]
+        },
+        {
+          "id": "rust-face",
+          "op": "stroke",
+          "material": "rust",
+          "path": [
+            [
+              0.82,
+              0.68,
+              0.6
+            ],
+            [
+              0.9,
+              0.67,
+              1
+            ],
+            [
+              1.02,
+              0.61,
+              0.8
+            ]
+          ]
+        },
+        {
+          "id": "rock-facets",
+          "op": "family",
+          "material": "rust",
+          "path": [
+            [
+              0.76,
+              0.77,
+              0.2
+            ],
+            [
+              0.82,
+              0.71,
+              0.9
+            ],
+            [
+              0.87,
+              0.73,
+              0.2
+            ]
+          ],
+          "count": 9,
+          "spread": [
+            0.2,
+            0.17
+          ],
+          "jitter": 0.035
+        },
+        {
+          "id": "lit-rock-edge",
+          "op": "stroke",
+          "material": "light",
+          "path": [
+            [
+              0.77,
+              0.735,
+              0.2
+            ],
+            [
+              0.83,
+              0.674,
+              0.9
+            ],
+            [
+              0.92,
+              0.67,
+              0.3
+            ],
+            [
+              1.03,
+              0.606,
+              0.05
+            ]
+          ]
+        },
+        {
+          "id": "rock-shadow",
+          "op": "stroke",
+          "material": "rock",
+          "path": [
+            [
+              0.73,
+              0.87,
+              0.5
+            ],
+            [
+              0.85,
+              0.86,
+              0.9
+            ],
+            [
+              1.02,
+              0.78,
+              0.8
+            ]
+          ]
+        },
+        {
+          "id": "front-stone",
+          "op": "stroke",
+          "material": "rock",
+          "path": [
+            [
+              -0.03,
+              0.97,
+              0.6
+            ],
+            [
+              0.09,
+              0.94,
+              1
+            ],
+            [
+              0.25,
+              1.01,
+              0.3
+            ]
+          ]
+        }
+      ]
+    }
+  ]
+}
