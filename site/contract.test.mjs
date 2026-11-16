@@ -46,6 +46,10 @@ test('real Canvas2D has repeatable pixels and invalid renders preserve committed
     invalid.layers[0].commands.push({ id: 'bad-ref', op: 'stroke', material: 'missing', path: [[0.1, 0.1], [0.7, 0.7]] });
     await assert.rejects(() => painter.render(invalid), /missing|not defined/i);
     assert.equal(digest(), first, 'failed batch cannot overwrite committed image');
+    const cancelled = new AbortController();
+    cancelled.abort();
+    await assert.rejects(() => painter.render(score, { signal: cancelled.signal }), /cancelled/i);
+    assert.equal(digest(), first, 'cancelled render cannot overwrite committed image');
     assert.equal(painter.document.seed, score.seed, 'committed score retained');
   } finally { painter.dispose(); }
 });
