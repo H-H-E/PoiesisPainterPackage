@@ -10,7 +10,7 @@ import {MaterialSurface, createReservoir} from '../dist/materials.js';
 import {readFile, writeFile, mkdir} from 'node:fs/promises';
 import {execFileSync} from 'node:child_process';
 import {createHash} from 'node:crypto';
-import ts from 'typescript';
+import {transform} from 'esbuild';
 
 const out=process.argv[2] || 'evidence/renders/material-studies';
 const baselineSHA='8665223329eedb138d90e81e1e8254fdc92cc99d';
@@ -132,7 +132,7 @@ async function pinnedBaseline(){
  }
  if(!content)return {status:'unavailable',reason:failure};
  try{
-  const js=ts.transpileModule(content,{compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.ESNext}}).outputText;
+  const js=(await transform(content,{loader:'ts',format:'esm',target:'es2022'})).code;
   const impl=await import('data:text/javascript;base64,'+Buffer.from(js).toString('base64'));
   return {status:'available',source,sha256:hash(content),impl};
  }catch(e){return {status:'unavailable',reason:`baseline compile/import failed: ${e.message}`};}
