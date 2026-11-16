@@ -69,3 +69,5 @@
 #ai-privacy{border-top:1px solid #d4ddd2;padding-top:17px;font-size:11px;color:#856757;margin:21px 0 0;line-height:1.8}
 @media(max-width:1100px){.prompt-layout{gap:5%}.prompt-form-panel form{padding:20px}.prompt-section{padding-block:90px}}
 @media(max-width:760px){.prompt-layout{grid-template-columns:1fr;gap:37px}.prompt-section{padding-block:75px}.prompt-intro h2{font-size:clamp(50px,9.5vw,72px)}.prompt-form-head{padding:17px}.prompt-form-panel form{padding:17px}.prompt-fields{gap:12px}.prompt-submit .button{flex:1;padding-inline:12px}.prompt-intro>p:not(.overline){margin-top:20px}}
+
+.prompt-reuse-note{font-size:11px;line-height:1.6;color:#54746d;margin:12px 0 0}
