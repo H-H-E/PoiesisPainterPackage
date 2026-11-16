@@ -1,9 +1,10 @@
 import { build } from 'esbuild';
-import { mkdir, readFile, writeFile, copyFile } from 'node:fs/promises';
+import { mkdir, rm, readFile, writeFile, copyFile } from 'node:fs/promises';
 import { resolve, relative } from 'node:path';
 
 const root = resolve(import.meta.dirname, '..');
 process.chdir(root);
+await rm('site/dist', { recursive: true, force: true });
 await mkdir('site/dist', { recursive: true });
 const result = await build({
   entryPoints: ['site/app.ts'], outdir: 'site/dist',
