@@ -93,3 +93,22 @@ test('intent controls expose inspectable effects without choosing a composition'
   assert.ok(gentle.tremor>strong.tremor&&gentle.speedScale<strong.speedScale);
   assert.ok(gentle.explanation.every(x=>typeof x==='string'&&x.length>10));
 });
+
+test('invalid and empty geometry is rejected before any raster allocation', () => {
+  assert.deepEqual(samplePath([],300,200,1), []);
+  assert.deepEqual(samplePath([[.3,.3],[Number.NaN,.4]],300,200,1), []);
+  assert.deepEqual(samplePath([[.3,.3],[.5,.4]],0,200,1), []);
+  assert.deepEqual(sampleBounds([],5,128,96),{x:0,y:0,width:0,height:0});
+  assert.deepEqual(sampleBounds([{x:Infinity,y:20}],5,128,96),{x:0,y:0,width:0,height:0});
+  assert.deepEqual(sampleBounds([{x:0,y:0}],NaN,128,96),{x:0,y:0,width:0,height:0});
+});
+
+test('tight turns, zero-length segments and pressure reversals stay bounded', () => {
+  const path=[[.1,.6,0],[.45,.6,1],[.451,.6,.2],[.452,.599,.4],[.49,.08,.8],[.52,.6,1],[.3,.59,0]];
+  const samples=samplePath(path,512,320,71);
+  assert.ok(samples.length>70&&samples.length<=16385);
+  assert.ok(samples.every(p=>Object.values(p).every(Number.isFinite)));
+  assert.ok(samples.every(p=>Math.hypot(p.nx,p.ny)>.99999));
+  assert.ok(samples.every(p=>p.x>-20&&p.x<532&&p.y>-20&&p.y<340));
+  assert.ok(samples.every((p,i)=>i===0||p.distance>=samples[i-1].distance));
+});
