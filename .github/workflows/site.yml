@@ -1,0 +1,53 @@
+name: Static site and playground verification
+
+on:
+  pull_request:
+    paths:
+      - 'site/**'
+      - 'vercel.json'
+      - '.github/workflows/site.yml'
+      - 'src/**'
+      - 'examples/**'
+  push:
+    branches: [main, 'feat/**']
+    paths:
+      - 'site/**'
+      - 'vercel.json'
+      - '.github/workflows/site.yml'
+      - 'src/**'
+      - 'examples/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  site:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - name: Verify library build and regressions
+        run: npm run check
+      - name: Build static, code-split site
+        run: node site/build.mjs
+      - name: Typecheck site and integrated package
+        run: npx tsc --project site/tsconfig.json
+      - name: Check score contract, budgets and native deterministic render
+        run: node --test site/contract.test.mjs
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+      - name: Exercise desktop, touch, exports and invalid-input recovery
+        run: node site/browser.test.mjs
+      - name: Upload site browser evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: poiesis-site-evidence
+          path: evidence/site/
+          retention-days: 30
