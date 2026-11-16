@@ -52,22 +52,40 @@ const reserved = new Set(['__proto__', 'prototype', 'constructor']);
 const escapePointer = (key: string) => key.replaceAll('~', '~0').replaceAll('/', '~1');
 
 function schemaIssue(error: SchemaError): ValidationIssue {
-  const key = error.keyword === 'required' ? error.params.missingProperty : error.keyword === 'additionalProperties' ? error.params.additionalProperty : undefined;
-  const path = error.instancePath + (typeof key === 'string' ? '/' + escapePointer(key) : error.keyword === 'discriminator' ? '/op' : '');
-  const suggestions: Record<string, string> = {
-    additionalProperties: 'Remove this field; consult src/schema.json for supported controls.',
-    required: 'Add the required field shown in the path.',
-    type: 'Use the required JSON type and finite numeric values.',
-    enum: 'Choose one of the values listed in the schema.',
-    const: 'Use the supported version or command operation.',
-    pattern: 'Use #rrggbb colors or a stable ASCII ID starting with a letter, as appropriate.',
-    minimum: 'Increase the value to the documented minimum.',
-    maximum: 'Reduce the value to the documented maximum.',
-    minItems: 'Add the required number of coordinates or points.',
-    maxItems: 'Reduce the array length to the documented limit.',
-    discriminator: 'Use op: stroke, fill, hatch, family or wait.',
-  };
-  return { path: path || '/', code: error.keyword, message: error.message ?? 'Invalid value', suggestion: suggestions[error.keyword] ?? 'Match the supported document schema; unknown commands are not ignored.' };
+  const params = error.params;
+  const field = error.keyword === 'required' ? params.missingProperty
+    : error.keyword === 'additionalProperties' ? params.additionalProperty
+    : error.keyword === 'propertyNames' ? params.propertyName
+    : undefined;
+  const path = error.instancePath + (typeof field === 'string' ? '/' + escapePointer(field) : error.keyword === 'discriminator' ? '/op' : '');
+  const value = (key: string) => JSON.stringify(params[key]);
+  const allowed = (values: unknown) => Array.isArray(values) ? values.map(item => JSON.stringify(item)).join(', ') : 'the schema values';
+  let suggestion: string;
+  switch (error.keyword) {
+    case 'required': suggestion = `Add ${value('missingProperty')} with the required value/type for this operation.`; break;
+    case 'additionalProperties': suggestion = `Remove unsupported field ${value('additionalProperty')}; choose only properties defined for this operation.`; break;
+    case 'propertyNames': suggestion = 'Rename this material key to an ASCII ID beginning with a letter (max 64 characters); avoid __proto__, prototype and constructor.'; break;
+    case 'type': suggestion = `Use a JSON ${String(params.type)} here; numeric values must be finite.`; break;
+    case 'enum': suggestion = `Choose exactly one of: ${allowed(params.allowedValues)}.`; break;
+    case 'const': suggestion = `Replace with ${value('allowedValue')}.`; break;
+    case 'pattern': suggestion = path.endsWith('/color') || path === '/background'
+      ? 'Use a six-digit opaque hexadecimal color, for example "#183142".'
+      : 'Use a stable ASCII ID beginning with a letter, followed only by letters, digits, _, ., : or - (max 64 characters).'; break;
+    case 'minimum': suggestion = `Use a number >= ${String(params.limit)}.`; break;
+    case 'maximum': suggestion = `Use a number <= ${String(params.limit)}.`; break;
+    case 'minItems': suggestion = `Supply at least ${String(params.limit)} items; paths need two points, polygons three, and points two coordinates.`; break;
+    case 'maxItems': suggestion = `Supply at most ${String(params.limit)} items; a point is [x,y] or [x,y,pressure].`; break;
+    case 'minProperties': suggestion = `Supply at least ${String(params.limit)} material recipes.`; break;
+    case 'maxProperties': suggestion = `Supply at most ${String(params.limit)} material recipes.`; break;
+    case 'discriminator': suggestion = 'Set op to exactly one of: "stroke", "fill", "hatch", "family", "wait"; do not invent new operations.'; break;
+    default: suggestion = 'Match src/schema.json; unsupported commands and attributes are rejected, not ignored.';
+  }
+  const message = error.keyword === 'discriminator'
+    ? 'Command needs a supported op discriminator'
+    : error.keyword === 'propertyNames'
+      ? `Invalid material ID ${value('propertyName')}`
+      : (error.message ?? 'Invalid value');
+  return { path: path || '/', code: error.keyword, message, suggestion };
 }
 
 /** Estimate upper bounds without expanding families or allocating render surfaces. */
@@ -143,7 +161,11 @@ export function validatePainting(value: unknown): ValidationResult {
   if (!validateSchema(value)) {
     const raw = (validateSchema.errors ?? []) as SchemaError[];
     const deduplicated = new Map<string, ValidationIssue>();
+    // Ajv reports "not" and "propertyNames" for reserved material keys;
+    // prefer the actionable property-name issue to a vague parent issue.
+    const badPropertyPaths = new Set(raw.filter(error => error.keyword === 'propertyNames').map(error => error.instancePath));
     for (const error of raw) {
+      if (error.keyword === 'not' && badPropertyPaths.has(error.instancePath)) continue;
       const issue = schemaIssue(error);
       deduplicated.set(issue.path + ':' + issue.code + ':' + issue.message, issue);
     }
@@ -151,24 +173,45 @@ export function validatePainting(value: unknown): ValidationResult {
   }
   const document = value as PaintingDocument;
   const errors: ValidationIssue[] = [];
-  const seen = new Set<string>();
+  const seen = new Map<string, string>();
   const checkId = (id: string, path: string) => {
-    if (reserved.has(id)) errors.push({ path, code: 'reserved-id', message: `ID ${id} is reserved`, suggestion: 'Use a descriptive ID such as reeds or sky-wash.' });
-    if (seen.has(id)) errors.push({ path, code: 'duplicate-id', message: `ID ${id} already exists`, suggestion: 'Give every layer and command a unique stable ID.' });
-    seen.add(id);
+    if (reserved.has(id)) errors.push({ path, code: 'reserved-id', message: `ID ${id} is reserved`, suggestion: 'Choose a descriptive ID such as sky-wash instead of a JavaScript prototype name.' });
+    const first = seen.get(id);
+    if (first) errors.push({ path, code: 'duplicate-id', message: `ID ${id} already appears at ${first}`, suggestion: `Rename the later ID at ${path}; command and layer IDs must be globally unique.` });
+    else seen.set(id, path);
   };
   document.layers.forEach((layer, layerIndex) => {
     checkId(layer.id, `/layers/${layerIndex}/id`);
     layer.commands.forEach((command: Command, commandIndex: number) => {
       const path = `/layers/${layerIndex}/commands/${commandIndex}`;
       checkId(command.id, path + '/id');
-      if (command.op !== 'wait' && !Object.hasOwn(document.materials, command.material)) errors.push({ path: path + '/material', code: 'missing-material', message: `Material ${command.material} is not defined`, suggestion: 'Add this recipe to materials or select an existing material ID.' });
+      if (command.op !== 'wait' && !Object.hasOwn(document.materials, command.material)) errors.push({ path: path + '/material', code: 'missing-material', message: `Material ${JSON.stringify(command.material)} is not defined`, suggestion: `Use an existing material ID (${Object.keys(document.materials).slice(0, 8).map(id => JSON.stringify(id)).join(', ')}) or add that key and recipe to /materials.` });
     });
   });
   if (errors.length) return { valid: false, errors };
+  // Cheap gate before per-path geometry estimates on structurally valid but
+  // oversized scores (schema allows 32 layers * 10,000 commands per layer).
+  const commandCount = document.layers.reduce((sum, layer) => sum + layer.commands.length, 0);
+  if (commandCount > WORKLOAD_LIMITS.commands) {
+    return { valid: false, errors: [{ path: '/layers', code: 'workload-commands', message: `Total commands ${commandCount} exceed ${WORKLOAD_LIMITS.commands}`, suggestion: 'Remove commands across layers or use a bounded family for repeated marks.' }] };
+  }
   const workload = estimateWorkload(document);
+  const repairs: Record<keyof WorkloadEstimate, [string, string]> = {
+    pixels: ['/width', 'Reduce width and/or height until width * height is within the budget.'],
+    layerPixels: ['/layers', 'Reduce layer count or canvas dimensions until width * height * layer count fits.'],
+    commands: ['/layers', 'Reduce the total command count across all layers.'],
+    expandedMarks: ['/layers', 'Lower family.count or hatch polygon complexity / line density.'],
+    expandedPoints: ['/layers', 'Reduce family.count, path length or hatch polygon complexity.'],
+    simulationSteps: ['/layers', 'Reduce the sum of wait.steps across all layers.'],
+    simulationCellSteps: ['/layers', 'Reduce wait.steps or canvas width and height.'],
+    ribbonVertices: ['/layers', 'Reduce bristles, family.count, long paths or canvas dimensions.'],
+    rasterPixels: ['/layers', 'Reduce brush size, mark coverage, family.count or canvas dimensions.'],
+  };
   for (const key of Object.keys(WORKLOAD_LIMITS) as (keyof typeof WORKLOAD_LIMITS)[]) {
-    if (workload[key] > WORKLOAD_LIMITS[key]) errors.push({ path: '/', code: 'workload-' + key, message: `${key} estimate ${workload[key]} exceeds ${WORKLOAD_LIMITS[key]}`, suggestion: key === 'pixels' || key === 'layerPixels' ? 'Reduce export dimensions or the number of layers.' : 'Reduce family counts, path points, hatch density, commands or simulation steps.' });
+    if (workload[key] > WORKLOAD_LIMITS[key]) {
+      const [path, suggestion] = repairs[key];
+      errors.push({ path, code: 'workload-' + key, message: `${key} estimate ${workload[key]} exceeds ${WORKLOAD_LIMITS[key]}`, suggestion });
+    }
   }
   return errors.length ? { valid: false, errors, workload } : { valid: true, errors: [], workload };
 }

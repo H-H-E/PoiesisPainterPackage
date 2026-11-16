@@ -1,0 +1,19 @@
+# Poiesis Painter — small-agent contract (JSON v1.0)
+Browser Canvas2D/CPU painting from a deterministic, data-only score; no LLM/API/server required.
+Authoritative JSON Schema: src/schema.json; extended guide: https://github.com/H-H-E/PoiesisPainterPackage/blob/main/docs/agent-guide.md
+Working score: https://github.com/H-H-E/PoiesisPainterPackage/blob/main/examples/agent-challenge.json
+
+Return ONE JSON object, not JS or prose:
+{"version":"1.0","width":320,"height":240,"seed":1,"background":"#f1ede3","materials":{"ink":{"medium":"ink","color":"#183142","size":0.02}},"layers":[{"id":"foreground","commands":[{"id":"line","op":"stroke","material":"ink","path":[[0.1,0.8,1],[0.9,0.2,0.2]]}]}]}
+Required: version,width,height,seed,background,materials (1..128 recipes),layers (1..32). Unique layer/command IDs; all material references must match keys. Hex colors #rrggbb. IDs ASCII letter first, then letters/digits/_.:-, max 64; no prototype names.
+Material: {medium:"ink"|"watercolor"|"oil"|"graphite"|"marker"|"knife",color:"#rrggbb",size:0.0001..0.5}. Optional opacity,load,wetness,roughness,granulation,viscosity in 0..1; bristles 1..128.
+Operations, each with a unique id:
+ stroke {op:"stroke",material,path:[[x,y,pressure?],...]}; 2..4096 points; optional intent:{force,hesitation,restraint}, tilt,rotation,speed.
+ fill {op:"fill",material,polygon:[[x,y],...]}; >=3 vertices.
+ hatch {op:"hatch",material,polygon,spacing:0.001..0.2,angle:-360..360}.
+ family {op:"family",material,path,count:1..2000,spread:[dx,dy],jitter:0..0.5}; optional intent. Seeded repetitions of path.
+ wait {op:"wait",steps:1..200}; evolves the current layer's material simulation.
+Coordinates x,y -1..2 (0..1 is on canvas); pressure/intent 0..1. Layers optional opacity 0..1 and blend "normal"|"multiply"|"screen".
+Validate with validatePainting(score); inspect errors[] {path:JSON_pointer,code,message,suggestion}; repair and retry. Global workload budgets apply (including max 10,000 commands and max 24M pixels).
+API: import {Painter,validatePainting,capabilities} from '@poiesis/painter'; await new Painter(canvas).render(score). Edits: painter.revise(id,patch), painter.apply(layerId,commands), painter.remove(id), undo/redo.
+Not supported: SVG export, GPU, workers, physical spectral mixing, cross-layer wet-physics exchange. Determinism is backend-specific.
