@@ -260,7 +260,21 @@ export async function mountPlayground(): Promise<{ selectScene: (name: string) =
     const last = painter.document!;
     download(new Blob([painter.serialize(true) + '\n'], { type: 'application/json' }), 'poiesis-' + last.seed + '.json');
   });
-  window.addEventListener('pagehide', () => painter.dispose(), { once: true });
+  // BFCache preserves this document and its event listeners across history travel.
+  // Keep the committed canvas and Painter alive when pagehide.persisted is true.
+  window.addEventListener('pagehide', (event: PageTransitionEvent) => {
+    if (event.persisted) {
+      controller?.abort(); // Stop unfinished work, retain committed pixels.
+    } else {
+      painter.dispose(); // A new document will be constructed on a normal Back load.
+    }
+  });
+  // This handler also remains installed after a cached page resumes.
+  window.addEventListener('pageshow', (event: PageTransitionEvent) => {
+    if (event.persisted && committed) {
+      setMessage('Restored from browser history. The painting and score are ready.');
+    }
+  });
   await selectScene('landscape');
   return { selectScene };
 }

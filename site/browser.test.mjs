@@ -194,6 +194,60 @@ try {
   assert.equal(JSON.parse(await editor.inputValue()).seed, 9018);
   record('distinct landscape designs can be selected and reset to their curated seed');
 
+  // Synthetic PageTransitionEvents verify the branch; they do NOT prove BFCache.
+  const beforeHistoryScore = JSON.parse(await editor.inputValue());
+  const beforeHistoryPixels = await digest(desktop);
+  await desktop.evaluate(() => {
+    window.dispatchEvent(new PageTransitionEvent('pagehide', { persisted: true }));
+    window.dispatchEvent(new PageTransitionEvent('pageshow', { persisted: true }));
+  });
+  await desktop.locator('#render-button').click();
+  await waitRendered(desktop);
+  assert.equal(await digest(desktop), beforeHistoryPixels);
+  assert.deepEqual(JSON.parse(await editor.inputValue()), beforeHistoryScore);
+  record('synthetic persisted pagehide/pageshow retains a usable Painter and exact pixels');
+
+  // Actual navigation away and browser Back (not a synthetic event).
+  // Playwright can interfere with bfcache, so capture pageshow.persisted.
+  await desktop.evaluate(() => {
+    window.__historyProbe = { token: 'live-painter', shows: [], hides: [] };
+    window.addEventListener('pageshow', event => window.__historyProbe?.shows.push(event.persisted));
+    window.addEventListener('pagehide', event => window.__historyProbe?.hides.push(event.persisted));
+  });
+  await desktop.goto(base + 'away.html', { waitUntil: 'load' });
+  assert.match(await desktop.title(), /History navigation test/);
+  await desktop.goBack({ waitUntil: 'domcontentloaded', timeout: 120000 });
+  const historyProbe = await desktop.evaluate(() => window.__historyProbe || null);
+  const actuallyRestoredFromBFCache = !!historyProbe?.shows?.includes(true);
+  if (actuallyRestoredFromBFCache) {
+    assert.equal(await digest(desktop), beforeHistoryPixels, 'cached page retains canvas pixels');
+    assert.deepEqual(JSON.parse(await editor.inputValue()), beforeHistoryScore, 'cached page retains edited score');
+    record('actual Chromium back-forward cache restored live score and pixels');
+  } else {
+    record('real browser Back succeeded; actual bfcache restoration NOT observed');
+    await desktop.locator('[data-open-playground]').first().click();
+    await desktop.locator('#workbench').waitFor({ state: 'visible', timeout: 120000 });
+    await waitRendered(desktop);
+  }
+  const afterBack = desktop.locator('#score-editor');
+  const documentAfterBack = JSON.parse(await afterBack.inputValue());
+  documentAfterBack.seed = (documentAfterBack.seed + 1) >>> 0;
+  await afterBack.fill(JSON.stringify(documentAfterBack));
+  await desktop.locator('#render-button').click();
+  await waitRendered(desktop);
+  assert.equal(JSON.parse(await afterBack.inputValue()).seed, documentAfterBack.seed);
+  const backPNGEvent = desktop.waitForEvent('download');
+  await desktop.locator('#download-png').click();
+  const backPNG = await backPNGEvent;
+  await backPNG.saveAs(resolve(evidence, 'after-browser-back.png'));
+  assert.ok((await stat(resolve(evidence, 'after-browser-back.png'))).size > 800);
+  const backJSONEvent = desktop.waitForEvent('download');
+  await desktop.locator('#download-score').click();
+  const backJSON = await backJSONEvent;
+  await backJSON.saveAs(resolve(evidence, 'after-browser-back.json'));
+  assert.equal(JSON.parse(await readFile(resolve(evidence, 'after-browser-back.json'), 'utf8')).seed, documentAfterBack.seed);
+  record('real Back navigation supports editing, rendering and PNG/JSON exports');
+
   const mobileContext = await browser.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 1, hasTouch: true, isMobile: true });
   const mobile = await mobileContext.newPage();
   mobile.on('pageerror', error => errors.push('mobile: ' + error.message));
@@ -239,6 +293,7 @@ try {
     mobile: { width: 390, height: 844, touch: true },
     checks,
     errors,
+    bfcache: { actualPageShowPersisted: actuallyRestoredFromBFCache, observedHistoryProbe: historyProbe, syntheticPersistedEventTest: true },
     pixels: { original, seeded, materialChanged: changed },
     generatedAt: new Date().toISOString()
   }, null, 2) + '\n');

@@ -45,3 +45,10 @@ These are stricter than the schema: canvas dimensions <=960, area <=640,000 pixe
 The native contract test checks all five real gallery compositions, limits, Canvas2D repeatable PNG bytes, and invalid-score recovery. The Chromium browser test runs the built site with desktop and touch/mobile viewports, screenshot capture, keyboard shortcut, seed and medium changes, JSON/schema/budget rejection and recovery, and real downloads. It writes evidence/site/ only if executed. CI runs the site verification workflow separately from the library's existing suite; check actual job results before claiming success.
 
 This is an independent site integration, not a redesign of the core renderer.
+
+
+## Browser history and bfcache regression
+
+The workbench now preserves its live Painter when pagehide.persisted is true, retaining the last successful score and pixels while aborting in-flight work. A noncached page departure disposes resources and browser Back initializes a fresh document. The event listener intentionally is not once:true: a restored page can later exit again. A pageshow.persisted status indicates the existing score remains available.
+
+The Chromium browser test includes (1) synthetic persisted pagehide/pageshow events checking exact pixel retention and successful rerender, and (2) real navigation to a same-origin away.html page and browser Back, followed by score editing, rerender and PNG/JSON downloads. The report explicitly records actual pageshow.persisted from real navigation. Synthetic events are not evidence of a genuine bfcache hit. Playwright automation may inhibit bfcache eligibility; when it does, the report says so.
