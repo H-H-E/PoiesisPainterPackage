@@ -23,6 +23,12 @@ export function resolveIntent(material: Material, intent: Intent = {}): Resolved
 
 /** Centripetal Catmull–Rom with chord subdivision, clamped pressure and bounded vertex count. */
 export function samplePath(path: readonly GesturePoint[], width: number, height: number, seed = 0, intent?: ResolvedIntent): Sample[] {
+  // Validation normally precedes sampling; these guards also protect direct callers
+  // from NaN geometry reaching Canvas allocation or quadratic interpolation.
+  if (path.length < 2 || path.length > 16385 || !Number.isFinite(width) || !Number.isFinite(height) ||
+      width <= 0 || height <= 0 || !Number.isFinite(seed) ||
+      path.some(p => !Number.isFinite(p[0]) || !Number.isFinite(p[1]) ||
+        (p.length > 2 && !Number.isFinite(p[2])))) return [];
   const points = path.map(p => ({ x: p[0] * width, y: p[1] * height, p: p[2] ?? 1 }));
   const sampled: Sample[] = [];
   const spacing = Math.max(.8, Math.min(width, height) / 640);
@@ -41,7 +47,14 @@ export function samplePath(path: readonly GesturePoint[], width: number, height:
       const a1 = mix(a[axis], b[axis], t0, t1), a2 = mix(b[axis], c[axis], t1, t2), a3 = mix(c[axis], d[axis], t2, t3);
       return mix(mix(a1, a2, t0, t2), mix(a2, a3, t1, t3), t1, t2);
     };
-    const steps = Math.min(maxPerSegment, Math.max(1, Math.ceil(Math.hypot(c.x - b.x, c.y - b.y) / spacing)));
+    // Extra samples at tight control-point turns prevent chord-only stepping
+    // from skipping a narrow bend. The existing global vertex cap still holds.
+    const chord = Math.hypot(c.x - b.x, c.y - b.y);
+    const abx = b.x - a.x, aby = b.y - a.y, cdx = d.x - c.x, cdy = d.y - c.y;
+    const incoming = Math.hypot(abx, aby), outgoing = Math.hypot(cdx, cdy);
+    const bend = incoming > 1e-8 && outgoing > 1e-8 && chord > 1e-8
+      ? Math.min(chord * .6, Math.min(incoming, outgoing) * .3 * (1 - (abx * cdx + aby * cdy) / (incoming * outgoing))) : 0;
+    const steps = Math.min(maxPerSegment, Math.max(1, Math.ceil((chord + bend) / spacing)));
     for (let j = 0; j < steps; j++) {
       const t = j / steps;
       const x = interpolate('x', t), y = interpolate('y', t);
@@ -57,8 +70,15 @@ export function samplePath(path: readonly GesturePoint[], width: number, height:
   for (let i = 0; i < sampled.length; i++) {
     const p = sampled[i], before = sampled[Math.max(0, i - 1)], after = sampled[Math.min(sampled.length - 1, i + 1)];
     const dx = after.x - before.x, dy = after.y - before.y, length = Math.hypot(dx, dy);
-    p.nx = length > 1e-9 ? -dy / length : 0;
-    p.ny = length > 1e-9 ? dx / length : 1;
+    // At a reversal or repeated position the centered tangent may cancel.
+    // Fall back to a one-sided tangent rather than inventing a NaN normal.
+    const backX = p.x - before.x, backY = p.y - before.y;
+    const frontX = after.x - p.x, frontY = after.y - p.y;
+    const ax = length > 1e-9 ? dx : Math.hypot(frontX, frontY) > 1e-9 ? frontX : backX;
+    const ay = length > 1e-9 ? dy : Math.hypot(frontX, frontY) > 1e-9 ? frontY : backY;
+    const tangentLength = Math.hypot(ax, ay);
+    p.nx = tangentLength > 1e-9 ? -ay / tangentLength : 0;
+    p.ny = tangentLength > 1e-9 ? ax / tangentLength : 1;
     p.t = distance > 1e-9 ? p.distance / distance : i / (sampled.length - 1);
     const tremor = (intent?.tremor ?? 0) * Math.min(width, height) * (coherent(p.t * 19, seed) - .5);
     p.x += p.nx * tremor; p.y += p.ny * tremor;
@@ -67,8 +87,15 @@ export function samplePath(path: readonly GesturePoint[], width: number, height:
 }
 
 export function sampleBounds(samples: readonly { x: number; y: number }[], radius: number, width: number, height: number): Bounds {
+  const empty = { x: 0, y: 0, width: 0, height: 0 };
+  if (!samples.length || !Number.isFinite(radius) || radius < 0 ||
+      !Number.isFinite(width) || !Number.isFinite(height) || width <= 0 || height <= 0) return empty;
   let left = Infinity, top = Infinity, right = -Infinity, bottom = -Infinity;
-  for (const p of samples) { left = Math.min(left, p.x); top = Math.min(top, p.y); right = Math.max(right, p.x); bottom = Math.max(bottom, p.y); }
+  for (const p of samples) {
+    if (!Number.isFinite(p.x) || !Number.isFinite(p.y)) return empty;
+    left = Math.min(left, p.x); top = Math.min(top, p.y);
+    right = Math.max(right, p.x); bottom = Math.max(bottom, p.y);
+  }
   const x = clamp(Math.floor(left - radius - 2), 0, width), y = clamp(Math.floor(top - radius - 2), 0, height);
   return { x, y, width: Math.max(0, clamp(Math.ceil(right + radius + 2), 0, width) - x), height: Math.max(0, clamp(Math.ceil(bottom + radius + 2), 0, height) - y) };
 }
