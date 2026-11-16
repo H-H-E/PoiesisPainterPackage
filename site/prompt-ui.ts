@@ -6,8 +6,11 @@ export async function mountPromptUI(applyScore: (score: unknown) => Promise<bool
   const seed = $<HTMLInputElement>('ai-seed');
   const submit = $<HTMLButtonElement>('ai-submit');
   const cancel = $<HTMLButtonElement>('ai-cancel');
+  const repaint = $<HTMLButtonElement>('ai-repaint');
   const status = $('ai-status');
   let controller: AbortController | null = null;
+  let lastPlan: unknown = null;
+  let lastSeed = 0;
   const message = (value: string, failure = false) => {
     status.textContent = value;
     status.setAttribute('role', failure ? 'alert' : 'status');
@@ -18,6 +21,7 @@ export async function mountPromptUI(applyScore: (score: unknown) => Promise<bool
     prompt.disabled = value;
     seed.disabled = value;
     cancel.hidden = !value;
+    repaint.disabled = value || lastPlan === null;
     form.setAttribute('aria-busy', String(value));
   };
   document.querySelectorAll<HTMLButtonElement>('[data-ai-example]').forEach(button => button.addEventListener('click', () => {
@@ -42,6 +46,23 @@ export async function mountPromptUI(applyScore: (score: unknown) => Promise<bool
   }
   submit.disabled = !enabled;
 
+  repaint.addEventListener('click', async () => {
+    if (!lastPlan || controller) return;
+    repaint.disabled = true;
+    message('Reusing the previous composition with a new seed—no Gateway call…');
+    try {
+      const nextSeed = (lastSeed + 1) >>> 0;
+      const { compilePlan } = await import('./ai-plan.mjs');
+      const score = compilePlan(lastPlan, nextSeed);
+      const applied = await applyScore(score);
+      if (!applied) throw new Error('This variation could not be rendered. The previous painting remains.');
+      seed.value = String(nextSeed);
+      lastSeed = nextSeed;
+      message('New variation painted locally, without calling AI Gateway. Edit or export the score below.');
+      document.getElementById('playground')?.scrollIntoView({ behavior: 'smooth' });
+    } catch (error) { message(error instanceof Error ? error.message : 'Could not repaint locally.', true); }
+    finally { repaint.disabled = lastPlan === null; }
+  });
   form.addEventListener('submit', async event => {
     event.preventDefault();
     if (!enabled || controller) return;
@@ -66,6 +87,9 @@ export async function mountPromptUI(applyScore: (score: unknown) => Promise<bool
       if (!result.ok) throw new Error(body?.error?.message || 'Scene generation was unavailable.');
       const applied = await applyScore(body.score);
       if (!applied) throw new Error('The generated score failed local validation or rendering. The previous painting remains available.');
+      lastPlan = body.plan;
+      lastSeed = value;
+      repaint.disabled = false;
       message('Scene painted with ' + body.model + ' · ' + (body.attempts === 2 ? 'repaired plan' : 'first-pass plan') + '. You can edit and export the exact JSON below.');
       document.getElementById('playground')?.scrollIntoView({ behavior: 'smooth' });
     } catch (error) {

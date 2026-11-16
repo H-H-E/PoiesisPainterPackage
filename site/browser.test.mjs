@@ -33,11 +33,13 @@ try {
   const desktop = await browser.newPage({ viewport: { width: 1440, height: 900 }, deviceScaleFactor: 1 });
   const mockPlan = { landscape:'estuary', lighting:'dawn', weather:'mist', palette:'cool', focal:'boat', placement:'center', accent:'ochre', density:'sparse' };
   let failPrompt = false;
+  let promptApiPosts = 0;
   await desktop.route('**/api/paint', async route => {
     if (route.request().method() === 'GET') {
       await route.fulfill({status:200,contentType:'application/json',body:JSON.stringify({enabled:true,model:'nvidia/nemotron-3.5-lightning-free',experimental:true})});
       return;
     }
+    promptApiPosts++;
     const body = route.request().postDataJSON();
     const score = failPrompt ? {version:'wrong'} : compilePlan(mockPlan,body.seed);
     await route.fulfill({status:200,contentType:'application/json',body:JSON.stringify({score,plan:mockPlan,model:'nvidia/nemotron-3.5-lightning-free',attempts:1})});
@@ -281,12 +283,27 @@ try {
   await promptFile.saveAs(resolve(evidence,'prompt-painting-score.json'));
   assert.deepEqual(JSON.parse(await readFile(resolve(evidence,'prompt-painting-score.json'),'utf8')),promptScore);
   await desktop.locator('#prompt-to-paint').screenshot({path:resolve(evidence,'prompt-panel-desktop.png'),animations:'disabled'});
+  assert.equal(promptApiPosts,1);
+  const promptPNGDownload = desktop.waitForEvent('download');
+  await desktop.locator('#download-png').click();
+  const promptPNG = await promptPNGDownload;
+  await promptPNG.saveAs(resolve(evidence,'prompt-painting.png'));
+  assert.ok((await stat(resolve(evidence,'prompt-painting.png'))).size > 800);
   record('mocked Gateway prompt becomes editable deterministic Painter JSON and exports');
+  await desktop.locator('#ai-repaint').click();
+  await desktop.waitForFunction(() => document.getElementById('ai-status')?.textContent?.startsWith('New variation painted'),null,{timeout:120000});
+  const locallyVaried = JSON.parse(await desktop.locator('#score-editor').inputValue());
+  const variedPixels = await digest(desktop);
+  assert.equal(locallyVaried.seed,105);
+  assert.notEqual(variedPixels,promptPixels);
+  assert.equal(promptApiPosts,1,'seed-only variation cannot invoke Gateway');
+  record('local variation changes pixels and score with zero additional Gateway calls');
   // Invalid server payload must not replace the completed painting.
   failPrompt = true;
   await desktop.locator('#ai-submit').click();
   await desktop.waitForFunction(() => document.getElementById('ai-status')?.getAttribute('role') === 'alert', null, {timeout:30000});
-  assert.equal(await digest(desktop),promptPixels);
+  assert.equal(await digest(desktop),variedPixels);
+  assert.equal(promptApiPosts,2);
   record('invalid AI response preserves committed canvas and exported score');
 
   const mobileContext = await browser.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 1, hasTouch: true, isMobile: true });
