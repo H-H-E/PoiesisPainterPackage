@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { validatePainting, assertPainting, PaintingValidationError, estimateWorkload, WORKLOAD_LIMITS } from '../dist/validate.js';
-import { readFileSync } from 'node:fs';
+import { readFileSync, mkdirSync, writeFileSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { createCanvas } from '@napi-rs/canvas';
 import { Painter } from '../dist/painter.js';
@@ -157,6 +157,19 @@ test('every guide score renders actual non-background pixels with the supported 
         if (pixels[i] !== background[0] || pixels[i+1] !== background[1] || pixels[i+2] !== background[2]) { changed = true; break; }
       }
       assert.ok(changed, `guide score ${index + 1} did not paint any visible pixels`);
+      // Actual native pixels and unfiltered nearest-neighbor crops, uploaded
+      // by the existing CI evidence artifact. No simulated screenshots.
+      const output = new URL('../evidence/browser/', import.meta.url);
+      mkdirSync(output, { recursive: true });
+      const prefix = `agent-guide-${index + 1}`;
+      writeFileSync(new URL(`../evidence/browser/${prefix}-score.json`, import.meta.url), painter.serialize(true) + '\n');
+      writeFileSync(new URL(`../evidence/browser/${prefix}-native.png`, import.meta.url), canvas.toBuffer('image/png'));
+      const size = Math.min(96, score.width, score.height);
+      const x = Math.floor((score.width - size) * 0.5), y = Math.floor((score.height - size) * 0.5);
+      const crop = painter.crop({ x, y, width: size, height: size, scale: 1 });
+      const enlarged = painter.crop({ x, y, width: size, height: size, scale: 4 });
+      writeFileSync(new URL(`../evidence/browser/${prefix}-crop-100pct.png`, import.meta.url), crop.toBuffer('image/png'));
+      writeFileSync(new URL(`../evidence/browser/${prefix}-crop-4x-nearest.png`, import.meta.url), enlarged.toBuffer('image/png'));
     } finally {
       painter.dispose();
     }
