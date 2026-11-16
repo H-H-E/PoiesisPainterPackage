@@ -1,6 +1,6 @@
 # Poiesis Painter — static demonstration site
 
-This is a Vercel-ready **experimental alpha** site that renders through the repository's real painting engine. It is isolated from the existing local studio and the package's public runtime API, exports and release paths.
+This is a Vercel-ready **experimental alpha** site that renders through the repository's real painting engine. It is isolated from the existing local studio and the package's public runtime API, exports and release paths. It also has an **optional, disabled-by-default** AI Gateway prompt-to-score function; the core site and manual painting editor remain client-only.
 
 ## Local build, tests, and deployment settings
 
@@ -20,9 +20,9 @@ Visit http://127.0.0.1:4174 after building. In a Vercel project choose **Other /
 - Install command: npm ci
 - Build command: node site/build.mjs
 - Output directory: site/dist
-- Environment variables: none
+- Environment variables: none for the manual site; the optional AI experiment requires server-side configuration
 
-Do **not** deploy as part of this PR. Built output under site/dist/ is ignored by git. The site consumes src/index.ts using esbuild code-splitting and examples/scenes.mjs for gallery content; no new npm dependency, backend, database, telemetry, accounts, paid AI API or arbitrary-code evaluator is needed.
+Do **not** deploy as part of this PR. Built output under site/dist/ is ignored by git. The site consumes src/index.ts using esbuild code-splitting and examples/scenes.mjs for gallery content; no new npm dependency, database, telemetry, accounts, or arbitrary-code evaluator is needed for manual painting. The optional prompt feature adds a bounded Vercel server function that uses AI Gateway only when explicitly enabled; see [AI Gateway pipeline](AI_GATEWAY.md).
 
 The static HTML shell loads before the painting engine. The engine loads on demand to create real gallery previews and when users open or scroll to the playground. Previews paint at small native sizes, release cached resources after completion and execute sequentially. Playground material controls modify a recipe in the JSON score; Render applies the draft only after package schema and site-budget validation. Ctrl/Command+Enter also renders. Work can be cancelled with the original committed score and pixels retained.
 
@@ -51,3 +51,7 @@ This is an independent site integration, not a redesign of the core renderer.
 `pagehide` can mean entry into the back-forward cache, not destruction of the current document. The workbench now preserves its committed Painter and pixels for `pagehide.persisted === true`, aborting only unfinished rendering; it disposes the renderer on noncached departure. A `pageshow.persisted` event confirms the page is continuing with the existing Painter. The listener is intentionally not `once:true` because the same restored page may navigate away again.
 
 The Chromium browser test covers both (a) synthetic persisted page transitions to verify that event handler retains valid serialization and exact image pixels, and (b) **real** navigation to a separate same-origin `away.html` page and browser Back, followed by score editing, rerender, PNG export and JSON export. The evidence report records whether `pageshow.persisted === true` was **actually** observed during the real navigation. The synthetic event alone is not a real bfcache test; if Chromium automation performs a fresh reload instead of restoring bfcache, the report states that limitation.
+
+## Optional AI text-to-paint (not enabled by default)
+
+See [AI_GATEWAY.md](AI_GATEWAY.md) for the compact-plan prompt, deterministic score compiler, privacy and NVIDIA trial restrictions, endpoint contract, secure manual configuration, mocked tests and platform limits. Generated scene plans use the same six landscape settings; arbitrary painting descriptions are not guaranteed. The AI panel remains disabled when /api/paint is unavailable or not explicitly enabled. No API key or other credential is included in this repository.
