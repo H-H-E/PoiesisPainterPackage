@@ -265,6 +265,7 @@ export class MaterialSurface {
     if (!this.activeBox || n === 0) return;
     for (let iteration = 0; iteration < n; iteration++) {
       const a = this.activeBox;
+      if (!a) break; // All remaining mobile carrier has evaporated.
       const x0 = Math.max(0, a.x - 1), y0 = Math.max(0, a.y - 1), x1 = Math.min(this.width, a.x + a.width + 1), y1 = Math.min(this.height, a.y + a.height + 1);
       const reverse = (++this.tick & 1) === 1;
       for (let yi = 0; yi < y1 - y0; yi++) {
