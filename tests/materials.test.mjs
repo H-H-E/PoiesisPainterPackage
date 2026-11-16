@@ -148,7 +148,7 @@ test('wet oil and palette knife have real height field and dry gloss invalidates
 test('ordered loaded-to-depleted oil pickup/redelivery conserves finite reservoir + surface mass',()=>{
  const s=new MaterialSurface(120,44,{texture:.7},7);
  s.deposit(mask(28,24),{x:10,y:10,width:28,height:24},{...oil,color:'#305d8f',wetness:1});
- const r=createReservoir({...oil,color:'#d58a3c'});r.remaining=16;r.capacity=16;
+ const r=createReservoir({...oil,color:'#d58a3c'});r.remaining=900;r.capacity=900;
  const mass=s.stats().pigmentMass+r.remaining,initial=r.remaining;
  for(let k=0;k<8;k++)s.deposit(mask(16,22),{x:12+k*11,y:12,width:16,height:22},oil,r);
  near(s.stats().pigmentMass+r.remaining,mass,.005);
