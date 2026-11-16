@@ -21,5 +21,6 @@ if (html.includes('__APP_SCRIPT__')) throw new Error('Unreplaced site script');
 await writeFile('site/dist/index.html', html);
 await copyFile('site/style.css', 'site/dist/style.css');
 await copyFile('site/favicon.svg', 'site/dist/favicon.svg');
+await copyFile('site/away.html', 'site/dist/away.html');
 const totalBytes = Object.entries(result.metafile.outputs).reduce((sum, [, o]) => sum + o.bytes, 0);
 console.log('Static site built: ' + jsPath + ', total lazy JavaScript bytes: ' + totalBytes);
