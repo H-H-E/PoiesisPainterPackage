@@ -30,12 +30,12 @@ All media retain the six existing names: watercolor, ink, oil, knife, graphite a
 | --- | --- |
 | `water-wet` / `water-dry` | Same horizontal mask and color; only binder wetness differs. Wet mobile pigment can travel; dry pigment cannot. |
 | `wet-cross` / `dry-cross` | Same two crossing colored masks; the first passage remains wet or is explicitly dried before the second. |
-| `oil-depletion` | A single ordered, finite-capacity oil reservoir is moved through 15 contiguous short masks across existing wet blue paint. |
-| `knife-relief` | Same sequence and loading conditions using the knife relief multiplier. |
+| `oil-depletion` | A single oil reservoir loaded with **950 coverage-mass units** is moved through 15 contiguous short masks across existing wet blue paint. |
+| `knife-relief` | The **same 15-chunk gesture** with a deliberately smaller **28-unit reservoir**, using the knife height-field multiplier and more rapid depletion. The loading differs intentionally from the 950-unit oil study. |
 
 Each experiment exports `*-native.png` at **240×180**, a **130×100 native 100% crop**, and a **390×300 nearest-neighbor 3× crop**. They are produced by `@napi-rs/canvas` with Canvas2D smoothing disabled, without super-resolution or synthetic replacement pixels. A separate 960×720 six-media contact sheet passes through the complete `Painter` raster path; six native 100% and nearest-neighbor 3× crops accompany it.
 
-The pinned baseline is `8665223329eedb138d90e81e1e8254fdc92cc99d:src/materials.ts`. Baseline source is read via `git show`; shallow CI checkouts may need a bounded Git fetch, and the script attempts this **only** for evidence in CI. When unavailable, the manifest marks the before source unavailable and produces **after-only** evidence; it never mislabels current output as baseline output. Set `MATERIAL_BASELINE_SOURCE=/path/to/original/materials.ts` to compare offline. No application execution requires Git or network access.
+For both oil and knife experiments, the runner initializes `reservoir.capacity` and `reservoir.remaining` **from `plan.params.capacity`**. Each before/after entry separately records `reservoirInitial` (the actual initial values), `underpaintMass`, `chunksExecuted`, and the final reservoir; CI tests assert that these match the published parameters and pigment budgets. Previously generated knife artifacts from head `56eae2f` used 950 despite declaring 28 and must not be used as reproducible 28-unit evidence.\n\nThe pinned baseline is `8665223329eedb138d90e81e1e8254fdc92cc99d:src/materials.ts`. Baseline source is read via `git show`; shallow CI checkouts may need a bounded Git fetch, and the script attempts this **only** for evidence in CI. When unavailable, the manifest marks the before source unavailable and produces **after-only** evidence; it never mislabels current output as baseline output. Set `MATERIAL_BASELINE_SOURCE=/path/to/original/materials.ts` to compare offline. No application execution requires Git or network access.
 
 To reproduce from a local checkout with Node ≥22:
 
