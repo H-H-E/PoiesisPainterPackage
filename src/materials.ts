@@ -250,7 +250,7 @@ export class MaterialSurface {
       if (grain > 0) {
         const ax = a % this.width, bx = b % this.width;
         const slope = this.tooth(ax, (a - ax) / this.width) - this.tooth(bx, (b - bx) / this.width);
-        const shift = slope * grain * this.texture * Math.min(wa, wb) * .018;
+        const shift = slope * grain * this.texture * Math.min(wa, wb) * .003;
         if (shift > 0) this.transfer(a, b, shift);
         else if (shift < 0) this.transfer(b, a, -shift);
       }
@@ -293,7 +293,7 @@ export class MaterialSurface {
         const loss = .018 + this.absorbency * .035 + front * .035;
         this.carrier[i] = water * (1 - loss);
         // Deposition speeds up at an evaporating front and in paper valleys.
-        const settle = loss * (.6 + (1 - this.tooth(x, y)) * grain * 2.6 + front * (3 + grain)) + (water < .08 ? .1 : 0);
+        const settle = loss * (.6 + (1 - this.tooth(x, y)) * grain * 2 + front * 3) + (water < .08 ? .1 : 0);
         this.mobile[i] = Math.max(0, Math.min(this.pigment[i], this.mobile[i] * (1 - Math.min(.7, settle))));
       }
       this.dirtyBox = this.union(this.dirtyBox, { x: x0, y: y0, width: x1 - x0, height: y1 - y0 });
