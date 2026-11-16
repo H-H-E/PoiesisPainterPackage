@@ -122,6 +122,13 @@ try {
   assert.equal(exported.seed, 99);
   assert.equal(exported.materials.sky.medium, 'ink');
   record('PNG and exact successfully rendered JSON score download as real files');
+  await desktop.locator('#reset-button').click();
+  await waitRendered(desktop);
+  const resetScore = JSON.parse(await editor.inputValue());
+  assert.equal(resetScore.seed, 97);
+  assert.equal(resetScore.materials.sky.medium, 'watercolor');
+  assert.equal(await digest(desktop), original);
+  record('reset restores original seeded example and exact original pixels');
 
   await desktop.locator('[data-scene="ink"]').click();
   await waitRendered(desktop);
@@ -145,6 +152,15 @@ try {
   await mobile.locator('#playground').screenshot({ path: resolve(evidence, 'playground-mobile.png'), animations: 'disabled' });
   record('touch/mobile layout, working canvas and responsive controls without sideways overflow');
   await mobileContext.close();
+
+  const unsupported = await browser.newPage({ viewport: { width: 800, height: 650 } });
+  await unsupported.addInitScript(() => { Object.defineProperty(window, 'structuredClone', { configurable: true, value: undefined }); });
+  await unsupported.goto(base, { waitUntil: 'load' });
+  await unsupported.locator('[data-open-playground]').first().click();
+  assert.match(await unsupported.locator('#playground-loading').innerText(), /could not start|are required/i);
+  assert.equal(await unsupported.locator('#workbench').isVisible(), false);
+  await unsupported.close();
+  record('unsupported browser receives accessible recovery explanation, not an empty workbench');
 
   assert.deepEqual(errors, [], 'browser JavaScript errors');
   record('no uncaught page errors');
