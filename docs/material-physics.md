@@ -4,7 +4,7 @@ Scope: issue #4, workstream 03, original CPU material-field solver. The public `
 
 ## State and equations
 
-The solver allocates seven Float32 arrays per pixel (red/green/blue optical absorbance totals, pigment mass, carrier/water, relief, and mobile pigment) plus one Uint8 tag. This is **29 bytes/pixel** before first presentation, **33 bytes/pixel** with the single reusable RGBA cache. The 33,554,432-pixel constructor cap remains, and the caller must budget roughly 33 bytes/pixel **per material layer** plus external Canvas, raster masks, cached composites and JS overhead. A 1024×1536 material surface has 45 MiB of fields and 6 MiB of presentation cache (51 MiB total); this is not a whole-render process-memory guarantee.
+The solver allocates seven Float32 arrays per pixel (red/green/blue optical absorbance totals, pigment mass, carrier/water, relief, and mobile pigment) plus one Uint8 tag. This is **29 bytes/pixel** before first presentation, **33 bytes/pixel** with the single reusable RGBA cache. The 33,554,432-pixel constructor cap remains, and the caller must budget roughly 33 bytes/pixel **per material layer** plus external Canvas, raster masks, cached composites and JS overhead. A 1024×1536 material surface has 43.5 MiB of fields and 6 MiB of presentation cache (49.5 MiB total); this is not a whole-render process-memory guarantee.
 
 All media retain the six existing names: watercolor, ink, oil, knife, graphite and marker. This is not a fluid dynamics or full bristle solver.
 
