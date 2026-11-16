@@ -67,7 +67,9 @@ function makeBrushes(p) {
     detail: material('ink',p.detail,.006,{opacity:.78,load:.7,roughness:.53,bristles:12}),
     dry: material('graphite',p.detail,.005,{opacity:.45,roughness:.82,bristles:10}),
     brush: material('oil',p.accent,.015,{opacity:.72,load:.78,roughness:.43,bristles:12}),
-    accent: material('knife',p.accent,.021,{opacity:.75,load:.65,bristles:9})
+    accent: material('knife',p.accent,.021,{opacity:.75,load:.65,bristles:9}),
+    scumble: material('oil',p.light,.011,{opacity:.33,load:.50,roughness:.67,bristles:9}),
+    charcoal: material('graphite',p.ground,.006,{opacity:.31,load:.44,roughness:.74,bristles:11})
   };
 }
 function builder(seed,preset) {
@@ -226,6 +228,61 @@ function desert(b,seed,shift){
   }
   b.stroke('passage','brush',[[.88,.74,.08],[.91,.736,.5],[.95,.74,.02]]);
 }
+/**
+ * Controlled dry-brush scumble, grouped by actual terrain rather than sprinkling
+ * noise uniformly over the canvas. The slight broken rhythm and overpaint are
+ * deliberate traces of a hand, with seed-keyed variations.
+ */
+const gestureZones = {
+  estuary: [
+    {x:[.02,.33],y:[.84,.97],count:10,dir:-.03,paint:'scumble'},
+    {x:[.77,.97],y:[.86,.97],count:7,dir:.01,paint:'scumble'},
+    {x:[.33,.88],y:[.7,.91],count:9,dir:.004,paint:'charcoal'}
+  ],
+  valley: [
+    {x:[.03,.39],y:[.79,.99],count:12,dir:.012,paint:'scumble'},
+    {x:[.61,.96],y:[.79,.99],count:13,dir:-.019,paint:'scumble'},
+    {x:[.08,.86],y:[.67,.78],count:7,dir:.006,paint:'charcoal'}
+  ],
+  headland: [
+    {x:[.01,.26],y:[.63,.97],count:13,dir:.047,paint:'scumble'},
+    {x:[.38,.92],y:[.74,.94],count:11,dir:.004,paint:'scumble'},
+    {x:[.03,.24],y:[.71,.9],count:6,dir:-.046,paint:'charcoal'}
+  ],
+  alpine: [
+    {x:[.19,.56],y:[.52,.68],count:10,dir:.029,paint:'scumble'},
+    {x:[.23,.88],y:[.76,.95],count:12,dir:.001,paint:'scumble'},
+    {x:[.06,.32],y:[.87,.98],count:7,dir:-.02,paint:'charcoal'}
+  ],
+  marsh: [
+    {x:[.02,.31],y:[.83,.98],count:10,dir:-.017,paint:'scumble'},
+    {x:[.74,.97],y:[.86,.98],count:11,dir:.017,paint:'scumble'},
+    {x:[.28,.8],y:[.72,.89],count:10,dir:.004,paint:'scumble'}
+  ],
+  desert: [
+    {x:[.04,.39],y:[.83,.99],count:14,dir:-.015,paint:'scumble'},
+    {x:[.64,.96],y:[.83,.98],count:11,dir:.016,paint:'scumble'},
+    {x:[.12,.85],y:[.64,.75],count:8,dir:.002,paint:'charcoal'}
+  ]
+};
+function addHandwork(b,id,seed) {
+  for (const [index,zone] of gestureZones[id].entries()) {
+    const r=keyedRandom(seed,id+'-brushwork-'+index);
+    for(let i=0;i<zone.count;i++){
+      const x=between(r,zone.x[0],zone.x[1]);
+      const y=between(r,zone.y[0],zone.y[1]);
+      const length=between(r,.022,.088);
+      const tilt=zone.dir*between(r,.4,1.7);
+      const wiggle=between(r,-.012,.012);
+      b.stroke('passage',zone.paint,[
+        [x,y,.04],
+        [x+length*.32,y+tilt*.25+wiggle*.4,.52],
+        [x+length*.72,y+tilt*.7-wiggle*.35,between(r,.22,.7)],
+        [x+length,y+tilt,.02]
+      ]);
+    }
+  }
+}
 const creators={estuary,valley,headland,alpine,marsh,desert};
 
 /** Produce an editable, schema-v1 painting score. No custom draw calls escape the engine. */
@@ -240,6 +297,7 @@ export function createGenerativeLandscape(name, width=480, height=320, seed) {
   const b=builder(chosenSeed,id);
   const r=keyedRandom(chosenSeed,id+'-horizon');
   creators[id](b,chosenSeed,between(r,-.017,.017));
+  addHandwork(b,id,chosenSeed);
   return {
     version:'1.0',width,height,seed:chosenSeed,background:p.paper,
     paper:{texture:.38,absorbency:.56},
