@@ -219,6 +219,22 @@ test('render reproducible native material evidence and machine-readable paired m
   assert.equal(e.after.raw.mobileOverPigment,0,e.id+' mobile excess');
   assert.ok(Math.abs(e.after.massDelta)<.005,e.id+' nonconservative '+e.after.massDelta);
   assert.ok(e.evidence.after.native.sha256&&e.evidence.after['3x-nearest'].sha256);
+  if(e.id==='oil-depletion'||e.id==='knife-relief'){
+   // Regression for PR #8 review: manifest inputs MUST equal reservoir values
+   // actually initialized and consumed by both pinned baseline and current solver.
+   const declared=e.params.capacity;
+   assert.equal(declared,e.id==='knife-relief'?28:950,'intentional study loading');
+   for(const [version,observed] of [['after',e.after],['before',e.before]]){
+    if(observed===null){assert.notEqual(process.env.CI,'true',`${e.id} baseline missing in CI`);continue;}
+    assert.equal(observed.reservoirInitial?.capacity,declared,`${e.id} ${version} initial capacity vs manifest`);
+    assert.equal(observed.reservoirInitial?.remaining,declared,`${e.id} ${version} initial paint vs manifest`);
+    assert.equal(observed.reservoir?.capacity,declared,`${e.id} ${version} executed reservoir vs manifest`);
+    assert.equal(observed.chunksExecuted,e.params.chunks,`${e.id} ${version} executed chunks vs manifest`);
+    assert.ok(Number.isFinite(observed.underpaintMass),`${e.id} ${version} underpaint mass`);
+    near(observed.budgetStart,observed.underpaintMass+declared,.005);
+    near(observed.budgetEnd,observed.stats.pigmentMass+observed.reservoir.remaining,.005);
+   }
+  }
  }
  const image=await loadImage(await readFile(dir+'/water-wet-after-crop-100pct.png'));
  const enlarged=await loadImage(await readFile(dir+'/water-wet-after-crop-3x-nearest.png'));
