@@ -9,7 +9,7 @@ import { Rasterizer } from './rasterizer.js';
 import { MaterialSurface, createReservoir, type MaterialStats } from './materials.js';
 
 export interface RenderProgress { completed: number; total: number; layerId: string; commandId: string; elapsedMs: number }
-export interface RenderOptions { signal?: AbortSignal; onProgress?: (progress: RenderProgress) => void; yieldEvery?: number }
+export interface RenderOptions { signal?: AbortSignal; onProgress?: (progress: RenderProgress) => void; yieldEvery?: number; transparentBackground?: boolean }
 export interface PainterOptions { canvasFactory?: CanvasFactory; historyLimit?: number }
 export interface LayerReport { id: string; reused: boolean; durationMs: number; marks: number; stats: MaterialStats }
 export interface RenderReport { durationMs: number; commands: number; marks: number; cacheHits: number; layers: LayerReport[] }
@@ -83,7 +83,7 @@ export class Painter {
     };
     try {
       const compositeContext = context2d(stage);
-      compositeContext.fillStyle = document.background; compositeContext.fillRect(0, 0, document.width, document.height);
+      if (!options.transparentBackground) { compositeContext.fillStyle = document.background; compositeContext.fillRect(0, 0, document.width, document.height); }
       for (const layer of document.layers) {
         check();
         const key = this.layerKey(document, layer), cached = this.cache.get(layer.id);

@@ -15,10 +15,15 @@
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
     },
-    "./schema": "./src/schema.json"
+    "./schema": "./src/schema.json",
+    "./orchestrator": {
+      "types": "./orchestrator/index.d.mts",
+      "import": "./orchestrator/index.mjs"
+    }
   },
   "files": [
     "dist",
+    "orchestrator",
     "src/schema.json",
     "llms.txt",
     "LICENSE",

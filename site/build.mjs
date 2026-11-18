@@ -7,7 +7,7 @@ process.chdir(root);
 await rm('site/dist', { recursive: true, force: true });
 await mkdir('site/dist', { recursive: true });
 const result = await build({
-  entryPoints: ['site/app.ts'], outdir: 'site/dist',
+  entryPoints: ['site/app.ts', 'site/compare.ts'], outdir: 'site/dist',
   entryNames: 'assets/[name]-[hash]', chunkNames: 'assets/[name]-[hash]',
   format: 'esm', platform: 'browser', target: ['es2022'],
   bundle: true, splitting: true, minify: true,
@@ -22,5 +22,13 @@ await writeFile('site/dist/index.html', html);
 await copyFile('site/style.css', 'site/dist/style.css');
 await copyFile('site/favicon.svg', 'site/dist/favicon.svg');
 await copyFile('site/away.html', 'site/dist/away.html');
+const comparisonEntry = Object.entries(result.metafile.outputs).find(([, output]) => output.entryPoint === 'site/compare.ts');
+if (!comparisonEntry) throw new Error('No comparison page entrypoint was produced');
+const comparisonPath = '/' + relative('site/dist', comparisonEntry[0]).replaceAll('\\\\', '/');
+const comparisonHtml = (await readFile('site/compare/index.html', 'utf8')).replace('__COMPARE_SCRIPT__', comparisonPath);
+if (comparisonHtml.includes('__COMPARE_SCRIPT__')) throw new Error('Unreplaced compare script');
+await mkdir('site/dist/compare', { recursive: true });
+await writeFile('site/dist/compare/index.html', comparisonHtml);
+await copyFile('site/compare.css', 'site/dist/compare/style.css');
 const totalBytes = Object.entries(result.metafile.outputs).reduce((sum, [, o]) => sum + o.bytes, 0);
 console.log('Static site built: ' + jsPath + ', total lazy JavaScript bytes: ' + totalBytes);

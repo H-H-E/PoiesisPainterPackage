@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Side-by-side, same-score painting renderer comparison with auditable routing choices and local render timings.">
+  <title>Poiesis — Renderer Lab</title>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/compare/style.css">
+  <script type="module" src="__COMPARE_SCRIPT__"></script>
+</head>
+<body>
+  <a class="skip" href="#main">Skip to comparison</a>
+  <header class="masthead"><a class="brand" href="/">POIESIS <strong>PAINTER</strong></a><nav><a href="/">Studio</a><a href="https://github.com/H-H-E/PoiesisPainterPackage">Source</a></nav><span class="eyebrow">ROUTING LAB / 001</span></header>
+  <main id="main">
+    <section class="intro">
+      <span class="kicker">Same commands. Different render decisions.</span>
+      <h1>One painting score.<br><em>Three interpretations.</em></h1>
+      <p>Poiesis can render every mark itself, translate the score to an intentionally basic Canvas2D reference, or assign individual layers to different engines. These are actual local renders, not screenshots or generated mockups.</p>
+      <div class="controls">
+        <label for="linework-engine">Linework backend</label>
+        <select id="linework-engine"><option value="canvas2d-reference">Canvas2D reference (reduced pressure fidelity)</option><option value="poiesis">Poiesis material renderer</option></select>
+        <button id="run" type="button">Run all three <span aria-hidden="true">↗</span></button>
+        <label class="zoom"><input type="checkbox" id="zoom"> 2× nearest-neighbor crop inspection</label>
+      </div>
+      <p id="status" role="status">Preparing browser renders…</p>
+    </section>
+    <section class="paintings" aria-label="Renderer outputs">
+      <article class="panel"><div class="panel-header"><span class="number">01 / BASELINE</span><h2>Poiesis only</h2><p>Original <code>Painter.render()</code>; all layers use the existing CPU material solver.</p></div><div class="canvas-view"><canvas id="poiesis" width="480" height="320" role="img" aria-label="Original Poiesis rendering"></canvas></div><div class="result" id="poiesis-result">Not rendered</div></article>
+      <article class="panel"><div class="panel-header"><span class="number">02 / REFERENCE</span><h2>Canvas2D only</h2><p>Basic paths and flat fills; watercolor waits do nothing. <strong>This is not a third-party painting framework.</strong></p></div><div class="canvas-view"><canvas id="reference" width="480" height="320" role="img" aria-label="Simplified Canvas2D reference rendering"></canvas></div><div class="result" id="reference-result">Not rendered</div></article>
+      <article class="panel"><div class="panel-header"><span class="number">03 / ROUTED</span><h2>Agent-directed hybrid</h2><p>Watercolor and oil retain Poiesis physics; optionally route graphite linework to the lightweight reference.</p></div><div class="canvas-view"><canvas id="hybrid" width="480" height="320" role="img" aria-label="Composited rendering with per-layer backend routing"></canvas></div><div class="result" id="hybrid-result">Not rendered</div></article>
+    </section>
+    <section class="analysis" aria-labelledby="route-title"><div><p class="kicker">Inspectable decisions</p><h2 id="route-title">What went where?</h2><p>Every layer includes an operation and material capability check. A backend missing an operation is rejected. Pinned approximations are named, never disguised as physical simulation.</p></div><pre id="routing-log" tabindex="0">No routing decisions yet.</pre></section>
+    <section class="limits" aria-label="Interpretation and future comparisons"><h2>What this comparison does—and doesn't—prove</h2><p>Measured times are from one local browser run and include different orchestration overhead. They are not statistically controlled performance benchmarks or independent judgments of artistic quality. Basic Canvas2D is deliberately limited; winning against it does <strong>not</strong> prove superiority to p5.brush, Washes, wet-edge, MyPaint or another specialized engine. Those require their actual engines running the same subject under calibrated, transparent conditions.</p><p>The framework can accept <code>p5.brush</code> and <code>perfect-freehand</code> through optional adapters when supplied by a consumer. Neither is bundled or executed in this page. See <a href="https://github.com/H-H-E/PoiesisPainterPackage/blob/main/docs/meta-orchestration.md">the integration guide</a>.</p></section>
+  </main><footer>Poiesis Painter / Open-source research instrument · <a href="/">Back to studio</a></footer>
+</body></html>
