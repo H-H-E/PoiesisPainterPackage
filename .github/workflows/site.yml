@@ -48,6 +48,8 @@ jobs:
         run: npx playwright install --with-deps chromium
       - name: Exercise desktop, touch, exports and invalid-input recovery
         run: node site/browser.test.mjs
+      - name: Verify comparison page in real Chromium and save pixel evidence
+        run: node site/compare.browser.mjs
       - name: Upload site browser evidence
         if: always()
         uses: actions/upload-artifact@v4

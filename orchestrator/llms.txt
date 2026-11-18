@@ -1,0 +1,14 @@
+# Poiesis meta-renderer: compact agent contract
+
+Read the score contract first: https://github.com/H-H-E/PoiesisPainterPackage/blob/main/llms.txt
+Then use `@poiesis/painter/orchestrator` for backend planning, not model-generated JavaScript.
+
+1. Create exactly one valid Poiesis `PaintingDocument` JSON v1.0: width, height, seed, background, materials, layers. Keep stable IDs; check using `validatePainting` before routing. Do not add unknown fields, brush IDs or unimplemented commands.
+2. Instantiate `new PaintingOrchestrator({adapters,validatePainting,canvasFactory})`. Supply only engines actually installed and compatible with the host. The default Poiesis adapter wraps the original `Painter`; its media are ink, watercolor, oil, graphite, marker and knife. Optional adapters `createP5BrushAdapter({brush})` and `createPerfectFreehandAdapter({getStroke})` need their libraries injected by the application. The Canvas2D reference deliberately loses material behavior.
+3. Inspect `orchestrator.capabilities()` and call `orchestrator.plan(score,{minimum:'approximate',pins:{}})`. Each plan contains layer->engine, requested features, warnings and rejected candidates. For stronger requirements choose `minimum:'native'`; if no renderer fits, report the missing capability instead of silently substituting a weaker backend.
+4. Optional pin: `pins:{linework:'perfect-freehand'}` for a layer consisting only of supported strokes, once that engine is available. A pin is not a guarantee of physical equivalence.
+5. Render with `await orchestrator.render(score,target,{pins,signal,onLayer})`. Offscreen layers are composited by opacity/blend/order, then committed together; failed adapters must not change the visible painting.
+6. One adapter's `renderLayer` MUST write raw transparent RGBA to the supplied canvas and MUST NOT blend/paint the background. Neither engine-specific resources nor brush-definition files are automatically cross-compatible.
+7. Use matched source scores, actual engine names, browser versions, raw timings, real PNGs and visible 100% crops for comparisons. Do not claim speed or aesthetic superiority based on a Canvas2D reference alone.
+
+Not provided yet: actual bundled p5.brush/Washes/wet-edge integrations, WebGPU shared textures, native MyPaint .myb import, physical wet mixing across backends, production speed rankings or automatic visual taste scoring.
