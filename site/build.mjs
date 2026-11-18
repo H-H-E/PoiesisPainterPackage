@@ -24,7 +24,7 @@ await copyFile('site/favicon.svg', 'site/dist/favicon.svg');
 await copyFile('site/away.html', 'site/dist/away.html');
 const comparisonEntry = Object.entries(result.metafile.outputs).find(([, output]) => output.entryPoint === 'site/compare.ts');
 if (!comparisonEntry) throw new Error('No comparison page entrypoint was produced');
-const comparisonPath = '/' + relative('site/dist', comparisonEntry[0]).replaceAll('\\\\', '/');
+const comparisonPath = '/' + relative('site/dist', comparisonEntry[0]).split(String.fromCharCode(92)).join('/');
 const comparisonHtml = (await readFile('site/compare/index.html', 'utf8')).replace('__COMPARE_SCRIPT__', comparisonPath);
 if (comparisonHtml.includes('__COMPARE_SCRIPT__')) throw new Error('Unreplaced compare script');
 await mkdir('site/dist/compare', { recursive: true });

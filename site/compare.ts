@@ -60,7 +60,7 @@ async function run() {
       finally { painter.dispose(); }
     });
     await panel('reference', () => referenceOnly.render(score, canvas('reference')));
-    const pins = lineEngine.value === 'poiesis' ? {} : { linework: 'canvas2d-reference' };
+    const pins: Record<string, string> = lineEngine.value === 'poiesis' ? {} : { linework: 'canvas2d-reference' };
     const hybrid = await panel('hybrid', () => orchestrator.render(score, canvas('hybrid'), { pins })) as { plan: { layers: Array<{ id: string; engine: string; warnings: string[]; reason: string; candidates: Array<{ id: string; eligible: boolean; failed: string[] }> }> } } | null;
     if (hybrid) {
       const decision = hybrid.plan;

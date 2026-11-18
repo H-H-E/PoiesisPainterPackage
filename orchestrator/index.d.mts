@@ -1,5 +1,5 @@
-import type { PaintingDocument, Layer } from '../src/types.generated.js';
-import type { CanvasFactory, CanvasSurface, RenderReport } from '../src/index.js';
+import type { PaintingDocument, Layer } from '../dist/types.generated.js';
+import type { CanvasFactory, CanvasSurface, RenderReport } from '../dist/index.js';
 
 export type CapabilityLevel = 'none' | 'approximate' | 'native';
 export type CapabilityTable = Record<string, CapabilityLevel>;
