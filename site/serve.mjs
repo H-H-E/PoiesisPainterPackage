@@ -8,7 +8,8 @@ export function createSiteServer() {
   return createServer(async (request, response) => {
     try {
       const url = new URL(request.url || '/', 'http://localhost');
-      const requested = decodeURIComponent(url.pathname === '/' ? '/index.html' : url.pathname);
+      const route = url.pathname === '/compare/' || url.pathname === '/compare' ? '/compare/index.html' : url.pathname;
+      const requested = decodeURIComponent(route === '/' ? '/index.html' : route);
       const file = resolve(base, '.' + requested);
       if (!file.startsWith(base + sep)) { response.writeHead(403); response.end('Forbidden'); return; }
       if (!(await stat(file)).isFile()) throw new Error('Not a file');
